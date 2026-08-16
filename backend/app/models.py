@@ -444,18 +444,27 @@ class BoardsResponse(BaseModel):
 
     This is where the argument stops being a citywide statistic and becomes
     local: the same complaint resolves at very different rates depending on
-    which district it is filed from.
+    which district it was filed from.
     """
 
     complaint_type: str
-    rows: list[BoardShare]
-    verified: bool = Field(
-        True,
+    rows: list[BoardShare] = Field(
+        ...,
         description=(
-            "True when computed from the dataset. The frontend's mock returns "
-            "False for generated data, so the UI can refuse to present "
-            "invented numbers as measured ones."
+            "Districts below `min_sample` are absent rather than carrying a "
+            "share. A choropleth gives every polygon equal visual weight, so "
+            "colouring one from nine records asserts a finding the data "
+            "cannot support -- and a map has nowhere to put the caveat."
         ),
+    )
+    month: int | None = Field(
+        None,
+        ge=1,
+        le=12,
+        description="The month these cover, or null when all months are pooled.",
+    )
+    min_sample: int = Field(
+        ..., description="The cutoff applied, so the UI can state it rather than guess."
     )
 
 

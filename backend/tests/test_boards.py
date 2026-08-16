@@ -32,11 +32,12 @@ def test_boards_are_drawable(client: TestClient) -> None:
     assert r.status_code == 200
     body = r.json()
 
-    assert body["verified"] is True
+    assert body["min_sample"] == 30
+    assert body["month"] is None, "no month asked for means all months pooled"
     assert body["rows"], "expected at least one district"
 
     for row in body["rows"]:
-        assert row["total"] >= 30, f"{row['board']} is too thin to colour"
+        assert row["total"] >= body["min_sample"], f"{row['board']} too thin to colour"
         # 'Unspecified QUEENS' is a missing value, not a place.
         assert not row["board"].lower().startswith("unspecified")
         assert 0.0 <= row["resolved_share"] <= 1.0
@@ -56,3 +57,19 @@ def test_unknown_complaint_type_is_empty_not_an_error(client: TestClient) -> Non
         "/api/explore/boards", params={"complaint_type": "NOT A COMPLAINT TYPE"}
     ).json()
     assert body["rows"] == []
+
+
+def test_month_filter_narrows_and_is_echoed(client: TestClient) -> None:
+    """The UI prints the month it drew, so the response has to state it."""
+    pooled = client.get(
+        "/api/explore/boards", params={"complaint_type": "HEAT/HOT WATER"}
+    ).json()
+    january = client.get(
+        "/api/explore/boards", params={"complaint_type": "HEAT/HOT WATER", "month": 1}
+    ).json()
+
+    assert january["month"] == 1
+    # One month is a twelfth of the evidence, so more districts fall under the
+    # cutoff -- which is exactly why pooling is the default for a map.
+    assert len(january["rows"]) <= len(pooled["rows"])
+    assert all(r["total"] >= january["min_sample"] for r in january["rows"])
