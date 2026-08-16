@@ -17,6 +17,7 @@ Two invariants run through this file and should not be relaxed:
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -185,7 +186,24 @@ class ForecastResponse(BaseModel):
         description="Combined share of RESOLVED_OUTCOMES. The headline number.",
     )
 
-    sample_size: int
+    sample_size: int = Field(
+        ...,
+        description=(
+            "Records the shares are computed over -- classified records only. "
+            "UNCLASSIFIED rows are excluded here and reported separately, "
+            "because 'our rules did not match this' is a fact about our "
+            "coverage, not something that happened to the complainant. "
+            "Leaving them in would put a measurement artifact in the "
+            "denominator of every percentage."
+        ),
+    )
+    unclassified_count: int = Field(
+        0,
+        description=(
+            "Records in the same cell that no rule matched. Reported, never "
+            "hidden -- but never shown as an outcome either."
+        ),
+    )
     confidence_tier: ConfidenceTier
     geo_level: GeoLevel
     time_window: TimeWindow
@@ -218,7 +236,56 @@ class Tip(BaseModel):
 
 class AdviseRequest(BaseModel):
     forecast: ForecastResponse
+    description: str = Field(
+        ...,
+        description=(
+            "What the person actually said, in their own words. This is what "
+            "goes into the draft complaint -- the taxonomy label ('HEAT/HOT "
+            "WATER') describes the category, not the problem, and a 311 "
+            "operator reading only the category learns nothing."
+        ),
+    )
     lang: str = "en"
+
+
+class AskRequest(BaseModel):
+    """One call for the whole flow: describe a problem, get an answer.
+
+    The step-by-step endpoints stay for the explorer UI and for debugging, but
+    a conversational client should use this. Three round trips is two too many
+    when someone is waiting to hear a reply.
+    """
+
+    text: str
+    lang: str | None = None
+    address: str | None = None
+    month: int | None = None
+    channel: str | None = None
+    source: InputSource = InputSource.TEXT
+    session_id: str | None = Field(
+        None,
+        description=(
+            "Opaque browser-generated UUID. When present the result is saved "
+            "to that session's history. There are no accounts -- this is not "
+            "identity, and anyone holding the id can read that history."
+        ),
+    )
+
+
+class AskResponse(BaseModel):
+    intake: IntakeResponse
+    forecast: ForecastResponse | None = Field(
+        None, description="Omitted when intake needs clarification first."
+    )
+    advice: AdviseResponse | None = None
+    community_board: str | None = None
+    location_exact: bool = Field(
+        False,
+        description=(
+            "False when the location was approximated (ZIP fallback) or "
+            "unknown, so the caller can say so rather than implying precision."
+        ),
+    )
 
 
 class AdviseResponse(BaseModel):
@@ -247,6 +314,78 @@ class AdviseResponse(BaseModel):
 # --------------------------------------------------------------------------
 # GET /api/explore
 # --------------------------------------------------------------------------
+
+
+# --------------------------------------------------------------------------
+# GET/DELETE /api/history
+# --------------------------------------------------------------------------
+
+
+class HistoryEntry(BaseModel):
+    """One past complaint, stored flat so the sidebar can re-render it.
+
+    Deliberately denormalised: everything needed to redraw the result card is
+    here, so clicking a past entry costs no model call and no cube lookup.
+    """
+
+    id: str
+    created_at: datetime
+    text: str = Field(..., description="What the person originally said.")
+
+    complaint_type: str
+    descriptor: str | None
+    agency: str
+    community_board: str | None
+
+    resolved_share: float | None
+    sample_size: int | None
+    confidence_tier: ConfidenceTier | None
+    narrative: str | None
+    draft_text: str | None
+
+
+class HistoryResponse(BaseModel):
+    entries: list[HistoryEntry]
+
+
+# --------------------------------------------------------------------------
+# GET /api/config
+# --------------------------------------------------------------------------
+
+
+class SpeechLanguage(BaseModel):
+    tag: str = Field(..., description="BCP-47, as SpeechRecognition.lang expects.")
+    label: str
+
+
+class ConfigResponse(BaseModel):
+    """What the frontend needs to know before it renders anything.
+
+    Which voice path is live is a backend decision so it can be switched and
+    debugged from `.env` without a frontend change. The client reads this once
+    on load and initialises accordingly.
+    """
+
+    voice_mode: str = Field(..., description="webspeech | vapi | off")
+    vapi_public_key: str | None = Field(
+        None, description="Browser-safe public key. Present only when voice_mode is vapi."
+    )
+    vapi_assistant_id: str | None = None
+    languages: list[SpeechLanguage] = Field(
+        default_factory=list,
+        description=(
+            "Populated only for webspeech, which cannot detect the spoken "
+            "language and must be told. Empty for vapi -- its transcriber "
+            "auto-detects, so the UI should hide the picker."
+        ),
+    )
+    llm_configured: bool = Field(
+        ...,
+        description=(
+            "False when no Anthropic key is set, in which case /api/ask will "
+            "fail. Lets the UI say so up front instead of on submit."
+        ),
+    )
 
 
 class ExploreRow(BaseModel):

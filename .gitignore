@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 311 data: cached Socrata chunks, the DuckDB cube, and the boundary file.
+# Roughly 1GB once the full ingest completes, and all of it is reproducible
+# from `python -m app.data.ingest` — never commit it.
+backend/data/
