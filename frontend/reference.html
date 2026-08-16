@@ -64,6 +64,11 @@
   button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
   button[disabled] { opacity:.5; cursor:default; }
   #mic.listening { background:var(--bad); border-color:var(--bad); color:#fff; }
+  /* Distinct from listening on purpose: the call takes ~5s to come up, and the
+     button must not look ready to hear before it is. */
+  #mic.connecting { background:transparent; border-style:dashed; opacity:.65; }
+  #mic.connecting { animation:pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.3; } }
   .stack { display:flex; flex-direction:column; gap:.5rem; }
   .card {
     background:var(--card); border:1px solid var(--line); border-radius:12px;
@@ -160,6 +165,11 @@ let listening = false, recognition = null, vapi = null;
 // Set while we are deliberately hanging up, so the ejection error that follows
 // is not reported as a failure.
 let endingByUs = false;
+
+// Restarts the 30s idle hang-up. Assigned by initVapi; a no-op on the other
+// paths. speak() calls it so answering a question buys a fresh window to ask
+// the next one rather than counting toward the timeout.
+let keepCallAlive = () => {};
 
 // How long a speaker has to stay quiet before we treat the utterance as
 // finished. Long enough to survive a mid-sentence breath, short enough that the
@@ -350,10 +360,20 @@ async function initVapi() {
     let idleTimer = null;
     const resetIdle = () => {
       clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => { if (listening) vapi.stop(); }, 30_000);
+      idleTimer = setTimeout(() => {
+        if (!listening) return;
+        endingByUs = true;           // our hang-up, so don't report the ejection
+        vapi.stop();
+      }, 30_000);
     };
+    keepCallAlive = resetIdle;       // speak() needs it; the call now outlives the answer
     vapi.on("speech-start", resetIdle);
-    vapi.on("call-start", () => { endingByUs = false; resetUtterance(); });
+    vapi.on("call-start", () => {
+      endingByUs = false;
+      resetUtterance();
+      setMic("live");                // only now can it actually hear anything
+      resetIdle();
+    });
     vapi.on("call-end", () => {
       clearTimeout(idleTimer);
       resetUtterance();              // a half-heard sentence must not leak into the next call
@@ -365,7 +385,7 @@ async function initVapi() {
     $("mic").onclick = async () => {
       if (listening) { endingByUs = true; return vapi.stop(); }
       if (await micBlocked()) return void ($("status").textContent = MIC_BLOCKED_MSG);
-      setListening(true);
+      setMic("connecting");          // ~5s before call-start; do not claim to be listening yet
       resetIdle();
       try {
         // start() is async and rejects on a bad assistant id, exhausted
@@ -384,23 +404,43 @@ async function initVapi() {
   }
 }
 
-function setListening(on) {
-  listening = on;
-  $("mic").classList.toggle("listening", on);
-  $("mic").textContent = on ? "◼ Stop" : "🎤 Speak";
-  if (!on) $("interim").textContent = "";
-  $("status").textContent = on ? "Listening…" : "";
+/**
+ * Mic state: "idle" | "connecting" | "live".
+ *
+ * "connecting" exists because Vapi takes ~5s to bring a call up (measured:
+ * 4.9ms to paint the button, 5383ms to call-start). A button that goes red
+ * instantly is lying for those five seconds, and everything said into them is
+ * lost -- so the button has to say when it is actually able to hear.
+ * Web Speech starts in milliseconds and goes straight to "live".
+ */
+function setMic(state) {
+  listening = state !== "idle";
+  const mic = $("mic");
+  mic.classList.toggle("listening", state === "live");
+  mic.classList.toggle("connecting", state === "connecting");
+  mic.textContent = state === "idle" ? "🎤 Speak" : "◼ Stop";
+  if (state === "idle") $("interim").textContent = "";
+  $("status").textContent =
+    state === "connecting" ? "Connecting to the mic…"
+    : state === "live" ? "Listening — go ahead."
+    : "";
 }
+
+// A declaration, not a `const` arrow: everything in this file that can be
+// reached from the awaited boot block has to hoist.
+function setListening(on) { setMic(on ? "live" : "idle"); }
 
 /** Speak a reply through whichever path is live. */
 function speak(text, lang) {
-  // `true` = end the call once the sentence finishes. Vapi bills per minute of
-  // open call, and one question is one short exchange -- without this the
-  // meter runs until someone remembers to press stop, which on demo day is
-  // "never". Each ask becomes a ~30s call instead of an open mic.
+  // Deliberately NOT say(text, endCallAfterSpoken=true). Bringing a Vapi call
+  // up costs ~5.4s, so hanging up after each answer made every follow-up
+  // question pay that again -- five seconds of dead air per turn, with the
+  // button already red. Keeping the call open means only the first question
+  // pays it and follow-ups are instant. The 30s idle hang-up below is what
+  // stops the meter running, so an open mic still can't be left billing.
   if (CONFIG.voice_mode === "vapi" && vapi) {
-    endingByUs = true;               // suppress the ejection error that follows
-    return void vapi.say(text, true);
+    keepCallAlive();
+    return void vapi.say(text);
   }
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
