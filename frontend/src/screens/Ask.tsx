@@ -23,7 +23,7 @@ import { ReportView } from '../components/ReportView'
 import { ChatView, type Turn } from '../components/ChatView'
 import { HistorySidebar } from '../components/HistorySidebar'
 import { StoredResult } from '../components/StoredResult'
-import { ClarifyingQuestion, ErrorState, Loading } from '../components/States'
+import { ErrorState, Loading } from '../components/States'
 
 /**
  * `#/ask?demo=noise` runs a known-good query on load, so the pitch survives a
@@ -112,7 +112,14 @@ export function Ask() {
   }, [refreshHistory])
 
   const run = useCallback(
-    async (request: AskRequest) => {
+    /**
+     * `displayText` is what the transcript shows, when that differs from what
+     * the request carries. Answering a clarifying question sends the original
+     * complaint and the answer together -- the backend holds no conversation
+     * state, so it needs both -- but the transcript should show only what was
+     * just said, not the merged sentence.
+     */
+    async (request: AskRequest, displayText?: string) => {
       setBusy(true)
       setError(null)
       setStored(null)
@@ -121,7 +128,10 @@ export function Ask() {
       try {
         const result = await ask(request)
         setResponse(result)
-        setTurns((t) => [...t, { id: turnId(), text: request.text, response: result }])
+        setTurns((t) => [
+          ...t,
+          { id: turnId(), text: displayText ?? request.text, response: result },
+        ])
 
         if (result.forecast) {
           // The live backend records history itself; offline we mirror its shape.
@@ -161,12 +171,21 @@ export function Ask() {
     void run({ ...query, session_id: sessionId })
   }, [config, run, sessionId])
 
+  /**
+   * Everything typed or spoken into the composer arrives here, including the
+   * answer to a clarifying question -- there is only one input on the screen,
+   * which is what lets a follow-up be answered by voice.
+   */
   function handleSubmit(
     text: string,
     source: InputSource,
     address: string | null,
     lang: string | null,
   ) {
+    if (awaitingAnswer && lastRequest) {
+      handleClarify(text)
+      return
+    }
     setResponse(null)
     void run({ text, source, address, lang, session_id: sessionId })
   }
@@ -180,11 +199,12 @@ export function Ask() {
     void run({ text, source: 'text', address, lang: null, session_id: sessionId })
   }
 
-  // State 1: resubmit with the clarifying answer appended rather than replacing it.
+  // State 1: resubmit with the clarifying answer appended rather than replacing
+  // it. The transcript shows the answer on its own -- see `displayText` in run.
   function handleClarify(answer: string) {
     if (!lastRequest) return
     setResponse(null)
-    void run({ ...lastRequest, text: `${lastRequest.text}. ${answer}` })
+    void run({ ...lastRequest, text: `${lastRequest.text}. ${answer}` }, answer)
   }
 
   function handleOpenEntry(entry: HistoryEntry) {
@@ -233,34 +253,19 @@ export function Ask() {
     void refreshHistory()
   }
 
-  const needsClarification = Boolean(response?.intake.clarifying_question) && !response?.forecast
+  // The backend asked something and is waiting on an answer. The composer takes
+  // it, so the question stays in the transcript rather than owning an input.
+  const awaitingAnswer = Boolean(response?.intake.clarifying_question) && !response?.forecast
+
+  // Prior turns live in the transcript. When the report is showing, the newest
+  // turn is rendered as the report instead, so it is not said twice.
+  const showingReport = !busy && Boolean(response?.forecast) && view === 'report'
+  const transcript = showingReport ? turns.slice(0, -1) : turns
 
   return (
     <div className="wrap">
       <div className={`ask${sidebarOpen ? ' with-sidebar' : ''}`}>
         <div className="ask-main stack">
-          <div>
-            <p className="label">Describe the problem</p>
-            <AskInput
-              key={seed.nonce}
-              config={config}
-              busy={busy}
-              initialText={seed.text}
-              initialAddress={seed.address}
-              onSubmit={handleSubmit}
-            />
-
-            <ExampleChips disabled={busy} onPick={handleExample} />
-
-            {/* Said beside the field, before the tool is used rather than in the
-                small print under a result: NYC has no public write API for 311,
-                and what the product produces is a draft. */}
-            <p className="intake-note">
-              We can't file it for you — NYC has no public write API for 311. What you get is a
-              draft to submit yourself.
-            </p>
-          </div>
-
           {/* Fail loudly and early rather than at the first /api/ask call. */}
           {config && !config.llm_configured && (
             <div className="note">
@@ -269,20 +274,17 @@ export function Ask() {
             </div>
           )}
 
+          {/* The conversation so far. Everything said stays on screen: a
+              clarifying question and the answer to it are turns like any other,
+              so the thread reads back as what actually happened. */}
+          <ChatView turns={transcript} />
+
           {busy && <Loading />}
 
           {error && (
             <ErrorState
               message={error}
               onRetry={lastRequest ? () => void run(lastRequest) : undefined}
-            />
-          )}
-
-          {/* State 1: clarifying question only — never an empty result shell. */}
-          {!busy && needsClarification && response?.intake.clarifying_question && (
-            <ClarifyingQuestion
-              question={response.intake.clarifying_question}
-              onAnswer={handleClarify}
             />
           )}
 
@@ -299,11 +301,9 @@ export function Ask() {
                 </div>
               </div>
 
-              {view === 'report' ? (
-                <ReportView response={response} />
-              ) : (
-                <ChatView turns={turns} />
-              )}
+              {/* In chat view the newest turn is already in the transcript
+                  above, so only the report needs rendering here. */}
+              {view === 'report' && <ReportView response={response} />}
             </div>
           )}
 
@@ -326,6 +326,35 @@ export function Ask() {
               }
             />
           )}
+
+          {/* The composer sits under the thread, where the next thing you say
+              goes. One input for the whole conversation: the first complaint and
+              every follow-up are typed or spoken into the same box. */}
+          <div className="composer">
+            {turns.length === 0 && <p className="label">Describe the problem</p>}
+
+            <AskInput
+              key={seed.nonce}
+              config={config}
+              busy={busy}
+              awaitingAnswer={awaitingAnswer}
+              initialText={seed.text}
+              initialAddress={seed.address}
+              onSubmit={handleSubmit}
+            />
+
+            {/* Only before the first turn: once there is a thread, the chips
+                would be offering to throw it away. */}
+            {turns.length === 0 && <ExampleChips disabled={busy} onPick={handleExample} />}
+
+            {/* Said beside the field, before the tool is used rather than in the
+                small print under a result: NYC has no public write API for 311,
+                and what the product produces is a draft. */}
+            <p className="intake-note">
+              We can't file it for you — NYC has no public write API for 311. What you get is a
+              draft to submit yourself.
+            </p>
+          </div>
         </div>
 
         <HistorySidebar

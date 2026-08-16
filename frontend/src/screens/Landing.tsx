@@ -13,6 +13,23 @@ import {
 } from '../lib/constants'
 import { GapBar } from '../components/GapBar'
 import { CityMap } from '../components/CityMap'
+import { useConfig } from '../lib/useConfig'
+
+/**
+ * Shown in their own scripts, not named in English. "Bengali" is a word about a
+ * language; বাংলা is the language, and someone scanning for their own is looking
+ * for the letters they write in.
+ */
+const LANGUAGE_SAMPLES = [
+  'English',
+  'Español',
+  '中文',
+  'বাংলা',
+  'हिन्दी',
+  'Русский',
+  'Kreyòl',
+  'العربية',
+]
 
 /**
  * One screen. Its only job is to make someone believe there is a real finding
@@ -55,6 +72,13 @@ export function Landing() {
   // does not. The range is never presented as a single average either way.
   const coverage = data ? pct(data.classified_share, 1) : CLASSIFIER_COVERAGE
 
+  // Only Vapi's transcriber detects the spoken language. Web Speech has to be
+  // told one before it listens, so promising speech in any language would be a
+  // promise the microphone cannot keep. Typing is multilingual either way.
+  const config = useConfig()
+  const canSpeakAnyLanguage =
+    config?.voice_mode === 'vapi' && !!config.vapi_public_key && !!config.vapi_assistant_id
+
   return (
     <div className="lp">
       <section className="lp-hero">
@@ -64,16 +88,27 @@ export function Landing() {
               which opens a hole the height of the map between the headline and
               the copy. */}
           <div className="lp-left">
-            <p className="lp-eyebrow">FREE · NO SIGN-IN · ANY LANGUAGE</p>
+            <p className="lp-eyebrow">FREE · NO SIGN-IN · {canSpeakAnyLanguage ? 'SPEAK OR TYPE' : 'ASK'} IN ANY LANGUAGE</p>
 
             <h1 className="lp-headline">
               Before you file a 311 complaint, see <em>what usually happens</em> to it.
             </h1>
 
             <p className="lede">
-              Describe the problem in your own words — any language. You'll get the real odds for
-              your area, why complaints like yours usually fail, and a draft ready to submit.
+              {canSpeakAnyLanguage ? 'Say it or type it' : 'Describe the problem'} in your own words
+              — <strong>in any language</strong>, and the answer comes back in that language. You'll
+              get the real odds for your area, why complaints like yours usually fail, and a draft
+              ready to submit.
             </p>
+
+            {/* 311's own callers are a third of them not speaking English at
+                home. Naming the languages in their own scripts is the claim; a
+                sentence about being "multilingual" is not. */}
+            <ul className="lp-langs" aria-label="Languages you can ask in">
+              {LANGUAGE_SAMPLES.map((name) => (
+                <li key={name}>{name}</li>
+              ))}
+            </ul>
 
             <div className="lp-actions">
               <button className="btn btn-primary" onClick={() => navigate('ask')}>

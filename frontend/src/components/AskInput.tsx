@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ConfigResponse, InputSource } from '../types/api'
 import { isRecognitionSupported, startDictation, type DictationSession } from '../lib/speech'
+import { startVapiDictation } from '../lib/vapi'
 
 /**
  * The locale SpeechRecognition listens in.
@@ -25,6 +26,12 @@ interface Props {
    */
   initialText?: string
   initialAddress?: string
+  /**
+   * The backend asked a clarifying question and this is the answer to it.
+   * Changes only the wording -- the input, the mic and the submit path are the
+   * same ones the first complaint went through.
+   */
+  awaitingAnswer?: boolean
   onSubmit: (text: string, source: InputSource, address: string | null, lang: string | null) => void
 }
 
@@ -34,10 +41,21 @@ interface Props {
  * The mic is shown only when voice_mode allows it AND the browser supports
  * SpeechRecognition (state 6: never block on voice).
  */
-export function AskInput({ config, busy, initialText, initialAddress, onSubmit }: Props) {
+export function AskInput({
+  config,
+  busy,
+  initialText,
+  initialAddress,
+  awaitingAnswer = false,
+  onSubmit,
+}: Props) {
   const [text, setText] = useState(initialText ?? '')
   const [address, setAddress] = useState(initialAddress ?? '')
   const [listening, setListening] = useState(false)
+  // Vapi negotiates a call before it can hear anything, which takes a few
+  // seconds. Saying "listening" during that window invites someone to start
+  // talking into a mic that is not open yet.
+  const [connecting, setConnecting] = useState(false)
   const [interim, setInterim] = useState('')
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [locating, setLocating] = useState(false)
@@ -47,7 +65,13 @@ export function AskInput({ config, busy, initialText, initialAddress, onSubmit }
   // The mic renders only when dictation will actually work. A mic that appears
   // and then explains in an error box that it is not wired up is worse than no
   // mic at all -- especially on stage.
-  const showMic = voiceMode === 'webspeech' && isRecognitionSupported()
+  //
+  // Each mode has its own liveness test: Web Speech needs the browser API,
+  // Vapi needs the keys the backend serves. Checking `voice_mode` alone would
+  // put a dead mic on screen whenever either is missing.
+  const canDictate = voiceMode === 'webspeech' && isRecognitionSupported()
+  const canCall = voiceMode === 'vapi' && !!config?.vapi_public_key && !!config?.vapi_assistant_id
+  const showMic = canDictate || canCall
 
   useEffect(() => () => session.current?.stop(), [])
 
@@ -69,25 +93,52 @@ export function AskInput({ config, busy, initialText, initialAddress, onSubmit }
     )
   }
 
-  function toggleMic() {
-    if (listening) {
+  // Shared by both engines: each reports the whole utterance so far, never just
+  // the newest fragment, so the textarea is always the full thought.
+  const handlers = {
+    onInterim: (t: string) => setInterim(t),
+    onFinal: (t: string) => setText(t),
+    onError: (message: string) => {
+      setVoiceError(message)
+      setConnecting(false)
+      setListening(false)
+    },
+    onEnd: () => {
+      setConnecting(false)
+      setListening(false)
+      setInterim('')
+    },
+  }
+
+  async function toggleMic() {
+    if (listening || connecting) {
       session.current?.stop()
+      setConnecting(false)
       return
     }
     setVoiceError(null)
     setInterim('')
-    const started = startDictation(DICTATION_LANG, {
-      onInterim: (t) => setInterim(t),
-      onFinal: (t) => setText(t),
-      onError: (message) => {
-        setVoiceError(message)
-        setListening(false)
-      },
-      onEnd: () => {
-        setListening(false)
-        setInterim('')
-      },
-    })
+
+    if (canCall) {
+      setConnecting(true)
+      const call = await startVapiDictation(config!.vapi_public_key!, config!.vapi_assistant_id!, {
+        ...handlers,
+        // The call is up; only now can it hear.
+        onListening: () => {
+          setConnecting(false)
+          setListening(true)
+        },
+      })
+      if (call) {
+        session.current = call
+      } else {
+        // startVapiDictation has already reported why through onError.
+        setConnecting(false)
+      }
+      return
+    }
+
+    const started = startDictation(DICTATION_LANG, handlers)
     if (started) {
       session.current = started
       setListening(true)
@@ -103,6 +154,10 @@ export function AskInput({ config, busy, initialText, initialAddress, onSubmit }
     // No language is sent: the backend detects it from the text, which is more
     // reliable than a picker the person may never have touched.
     onSubmit(value, listening ? 'voice' : 'text', address.trim() || null, null)
+    // Empty the box for the next turn. What was just said is not lost -- it is
+    // in the transcript above, which is where the conversation lives now.
+    setText('')
+    setInterim('')
   }
 
   return (
@@ -114,8 +169,12 @@ export function AskInput({ config, busy, initialText, initialAddress, onSubmit }
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit()
           }}
-          placeholder="Describe the problem in your own words — any language. e.g. my radiator has been cold for three days"
-          aria-label="Describe the problem"
+          placeholder={
+            awaitingAnswer
+              ? 'Answer in any language — speak it or type it'
+              : 'Describe the problem in your own words — any language. e.g. my radiator has been cold for three days'
+          }
+          aria-label={awaitingAnswer ? 'Answer the question' : 'Describe the problem'}
           disabled={busy}
         />
         <div className="field-bar">
@@ -124,9 +183,19 @@ export function AskInput({ config, busy, initialText, initialAddress, onSubmit }
               className="mic"
               onClick={toggleMic}
               data-listening={listening}
+              data-connecting={connecting}
               aria-pressed={listening}
-              aria-label={listening ? 'Stop dictation' : 'Start dictation'}
-              title={listening ? 'Stop dictation' : 'Speak instead of typing'}
+              aria-busy={connecting}
+              aria-label={
+                connecting ? 'Connecting' : listening ? 'Stop dictation' : 'Start dictation'
+              }
+              title={
+                connecting
+                  ? 'Connecting…'
+                  : listening
+                    ? 'Stop dictation'
+                    : 'Speak instead of typing'
+              }
               disabled={busy}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -180,10 +249,36 @@ export function AskInput({ config, busy, initialText, initialAddress, onSubmit }
           <div className="spacer" />
 
           <button className="btn btn-sm btn-primary" onClick={submit} disabled={busy || !text.trim()}>
-            {busy ? 'Checking…' : 'Check the odds'}
+            {busy ? 'Checking…' : awaitingAnswer ? 'Send' : 'Check the odds'}
           </button>
         </div>
       </div>
+
+      {/* What is actually true depends on which engine is live, so the claim
+          does too. Vapi's transcriber detects the spoken language; Web Speech
+          cannot, and is pinned to DICTATION_LANG -- promising "speak any
+          language" there would be a promise the mic cannot keep. Typing is
+          multilingual either way: the backend detects the language from the
+          text and answers in it. */}
+      <p className="multilingual">
+        <span aria-hidden="true">🌐</span>{' '}
+        {canCall ? (
+          <>
+            <strong>Speak or type in any language</strong> — हिन्दी, Español, 中文, বাংলা, Kreyòl,
+            العربية. You get the answer back in the language you asked in.
+          </>
+        ) : canDictate ? (
+          <>
+            <strong>Type in any language</strong> — हिन्दी, Español, 中文, বাংলা. The answer comes
+            back in the language you asked in. Dictation listens in English.
+          </>
+        ) : (
+          <>
+            <strong>Type in any language</strong> — हिन्दी, Español, 中文, বাংলা. The answer comes
+            back in the language you asked in.
+          </>
+        )}
+      </p>
 
       {listening && interim && (
         <div className="interim" aria-live="polite">
