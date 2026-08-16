@@ -171,6 +171,11 @@ let endingByUs = false;
 // the next one rather than counting toward the timeout.
 let keepCallAlive = () => {};
 
+// The original description, held while a clarifying question is on screen so
+// the answer can be appended to it instead of replacing it.
+let pendingContext = "";
+const TEXT_PLACEHOLDER = $("text").placeholder;
+
 // How long a speaker has to stay quiet before we treat the utterance as
 // finished. Long enough to survive a mid-sentence breath, short enough that the
 // pause does not read as the app having missed the question.
@@ -458,8 +463,11 @@ $("text").addEventListener("keydown", (e) => {
 });
 
 async function ask() {
-  const text = $("text").value.trim();
-  if (!text) return;
+  const answer = $("text").value.trim();
+  if (!answer) return;
+  // After a clarifying question this is the answer, not a new complaint: send
+  // both halves so the backend classifies the whole problem.
+  const text = pendingContext ? `${pendingContext}. ${answer}` : answer;
   $("go").disabled = true;
   $("out").innerHTML = "";
   // Two model calls means a few seconds. Name the work rather than spinning.
@@ -502,11 +510,21 @@ function render(d) {
 
   // Weak taxonomy match: ask rather than forecast against the wrong category.
   if (d.intake.clarifying_question) {
+    // Keep the original description and clear the box, so the next thing said
+    // or typed is read as the ANSWER and appended. Leaving the old words in
+    // place made the answer overwrite them, and "at 2am, upstairs" without
+    // "loud music" is a worse query than either half -- which is the whole
+    // reason the backend asked.
+    pendingContext = $("text").value.trim();
+    $("text").value = "";
+    $("text").placeholder = "Answer that, and I'll use it with what you already said…";
     $("out").innerHTML = `<div class="card"><div class="label">One quick question</div>
       <p>${esc(d.intake.clarifying_question)}</p></div>`;
     speak(d.intake.clarifying_question, d.intake.detected_lang);
     return;
   }
+  pendingContext = "";
+  $("text").placeholder = TEXT_PLACEHOLDER;
 
   const f = d.forecast, a = d.advice;
   const where = { COMMUNITY_BOARD:"in your district", BOROUGH:"in your borough", CITYWIDE:"citywide" }[f.geo_level];
