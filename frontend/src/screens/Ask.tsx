@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { AskRequest, AskResponse, ConfigResponse, HistoryEntry, InputSource } from '../types/api'
+import type { AskRequest, AskResponse, HistoryEntry, InputSource } from '../types/api'
 import {
   ApiError,
   ask,
   clearHistory,
   deleteHistoryEntry,
-  getConfig,
   getHistory,
   recordLocalHistory,
   USE_MOCK,
 } from '../api/client'
 import { getSessionId } from '../lib/session'
-import { isRecognitionSupported } from '../lib/speech'
-import { FALLBACK_LANGUAGES } from '../lib/constants'
+import { useConfig } from '../lib/useConfig'
 import {
   cacheResult,
   clearResultCache,
@@ -46,6 +44,32 @@ function hashParams(): URLSearchParams {
   return new URLSearchParams(hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : '')
 }
 
+/**
+ * The query a URL can arrive carrying, from three places: `?demo=` for the
+ * rehearsed pitch, and `?q=` from either the landing hero or a shared permalink.
+ *
+ * The hero also sends `addr`/`lang`/`src`, because it renders the same AskInput
+ * this screen does and would otherwise drop the location someone just typed. A
+ * ShareResult permalink deliberately carries none of them -- the geocoder takes
+ * "lat,lon" or a ZIP, not a community board -- so a shared link answers citywide
+ * and the scope note under the result says so.
+ */
+function urlQuery(): Omit<AskRequest, 'session_id'> | null {
+  const params = hashParams()
+  const demoKey = params.get('demo')
+  const demo = demoKey ? DEMO_QUERIES[demoKey] : null
+  if (demo) return { text: demo.text, source: 'text', address: demo.address, lang: 'en-US' }
+
+  const text = params.get('q')?.trim()
+  if (!text) return null
+  return {
+    text,
+    source: params.get('src') === 'voice' ? 'voice' : 'text',
+    address: params.get('addr')?.trim() || null,
+    lang: params.get('lang') || null,
+  }
+}
+
 /** Transcript keys only — never sent anywhere, never used as an entry id. */
 function turnId(): string {
   return `t_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
@@ -54,7 +78,7 @@ function turnId(): string {
 type ResultView = 'report' | 'chat'
 
 export function Ask() {
-  const [config, setConfig] = useState<ConfigResponse | null>(null)
+  const config = useConfig()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [response, setResponse] = useState<AskResponse | null>(null)
@@ -69,6 +93,10 @@ export function Ask() {
   const [stored, setStored] = useState<HistoryEntry | null>(null)
 
   const sessionId = getSessionId()
+  // Read once, at mount: whatever the URL arrived with also seeds the textarea,
+  // so an auto-fired query is visible and editable rather than answered by an
+  // apparently empty box.
+  const [initialText] = useState(() => urlQuery()?.text ?? '')
 
   const refreshHistory = useCallback(async (): Promise<HistoryEntry[]> => {
     try {
@@ -82,22 +110,6 @@ export function Ask() {
   }, [sessionId])
 
   useEffect(() => {
-    getConfig()
-      .then(setConfig)
-      .catch(() =>
-        // Voice is optional; a missing config must not block the text path.
-        //
-        // 'off' here would be the wrong default, though. It is the backend's
-        // way of saying "do not offer voice", and a failed call is not the
-        // backend saying anything -- while Web Speech runs entirely in the
-        // browser and needs no API at all. So an unreachable backend hides the
-        // mic only when the browser could not have done it anyway.
-        setConfig({
-          voice_mode: isRecognitionSupported() ? 'webspeech' : 'off',
-          languages: FALLBACK_LANGUAGES,
-          llm_configured: true,
-        }),
-      )
     void refreshHistory()
   }, [refreshHistory])
 
@@ -140,34 +152,22 @@ export function Ask() {
     [refreshHistory],
   )
 
-  // Fire a demo or a shared query once, after config lands so voice_mode is
-  // settled. `?q=` is what ShareResult's permalink carries: the complaint type,
-  // re-asked as free text. It deliberately carries no location -- the geocoder
-  // takes "lat,lon" or a ZIP, not a community board, so a shared link answers
-  // citywide and the scope note under the result says so.
+  // Fire whatever the URL carried, once, after config lands so voice_mode is
+  // settled before the first render of the input.
   const autoFired = useRef(false)
   useEffect(() => {
     if (autoFired.current || !config) return
-    const params = hashParams()
-    const demoKey = params.get('demo')
-    const demo = demoKey ? DEMO_QUERIES[demoKey] : null
-    const shared = params.get('q')?.trim()
-    if (!demo && !shared) return
+    const query = urlQuery()
+    if (!query) return
     autoFired.current = true
-    void run({
-      text: demo ? demo.text : (shared as string),
-      source: 'text',
-      address: demo ? demo.address : null,
-      lang: demo ? 'en-US' : null,
-      session_id: sessionId,
-    })
+    void run({ ...query, session_id: sessionId })
   }, [config, run, sessionId])
 
   function handleSubmit(
     text: string,
     source: InputSource,
     address: string | null,
-    lang: string,
+    lang: string | null,
   ) {
     setResponse(null)
     void run({ text, source, address, lang, session_id: sessionId })
@@ -234,7 +234,12 @@ export function Ask() {
         <div className="ask-main stack">
           <div>
             <p className="label">Describe_the_problem</p>
-            <AskInput config={config} busy={busy} onSubmit={handleSubmit} />
+            <AskInput
+              config={config}
+              busy={busy}
+              initialText={initialText}
+              onSubmit={handleSubmit}
+            />
           </div>
 
           {/* Fail loudly and early rather than at the first /api/ask call. */}
