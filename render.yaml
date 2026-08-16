@@ -1,0 +1,41 @@
+# Render deployment for 311derful.
+#
+# One Docker web service serving both the API and the built React app. No
+# database service: the cube is a 117MB read-only file, never written to.
+#
+# Measured under a 512MB cap, which is the free plan's limit: 93MB idle, 336MB
+# peak across the explore aggregates, 278MB under 24 concurrent requests. It
+# fits, but not with room to spare -- if the explore queries get heavier, this
+# is the first thing that breaks.
+
+services:
+  - type: web
+    name: 311derful
+    runtime: docker
+    plan: free
+    region: ohio           # closest Render region to NYC
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+
+    envVars:
+      # The cube is too big for git, so it is not in the checkout Render builds
+      # from. If Render forwards this into the build it bakes in; otherwise the
+      # entrypoint fetches it on first boot. Either way the app comes up.
+      - key: CUBE_URL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+      # Vapi. The PUBLIC key only -- it is designed to ship to the browser and
+      # is served by /api/config. The private key is not used by this project
+      # and must never be set here.
+      #
+      # resolved_voice_mode() falls back to webspeech if either value is
+      # missing, so a mistyped secret costs accuracy rather than the microphone.
+      - key: VOICE_MODE
+        value: vapi
+      - key: VAPI_PUBLIC_KEY
+        sync: false
+      - key: VAPI_ASSISTANT_ID
+        sync: false

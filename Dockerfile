@@ -54,12 +54,8 @@ RUN if [ -f ./data/nyc311-slim.duckdb ]; then \
     elif [ -n "$CUBE_URL" ]; then \
         curl -fsSL "$CUBE_URL" -o ./data/nyc311.duckdb; \
     else \
-        echo "No cube: build it with 'python -m app.data.export' or pass CUBE_URL" >&2; \
-        exit 1; \
-    fi \
- && python -c "import duckdb; c=duckdb.connect('data/nyc311.duckdb', read_only=True); \
-print('cube rows:', c.execute('select count(*) from cube').fetchone()[0]); \
-print('zips:', c.execute('select count(*) from zip_board').fetchone()[0])"
+        echo "Cube not baked in; the entrypoint will fetch it from CUBE_URL."; \
+    fi
 
 ENV DATA_DIR=/srv/backend/data \
     PYTHONUNBUFFERED=1 \
@@ -67,5 +63,6 @@ ENV DATA_DIR=/srv/backend/data \
 
 EXPOSE 8000
 
-# $PORT so the platform can pick it; most hosts inject one.
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+# The entrypoint fetches the cube if the build could not, then execs uvicorn.
+COPY docker-entrypoint.sh /usr/local/bin/
+ENTRYPOINT ["docker-entrypoint.sh"]
