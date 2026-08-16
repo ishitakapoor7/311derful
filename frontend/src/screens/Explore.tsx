@@ -17,7 +17,8 @@ const MONTHS = [
 export function Explore() {
   const [data, setData] = useState<ExploreResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // Default: worst first. This view is literally "where complaints go to die".
+  // Default: worst first. The question the page answers is which complaint
+  // types actually get fixed, and the informative end of that is the bottom.
   const [sortKey, setSortKey] = useState<SortKey>('resolved_share')
   const [asc, setAsc] = useState(true)
   const [query, setQuery] = useState('')
@@ -115,7 +116,7 @@ export function Explore() {
           maxWidth: '18ch',
         }}
       >
-        Where complaints go to die
+        Which complaints actually get fixed
       </h1>
 
       {error && <ErrorState message={error} />}
