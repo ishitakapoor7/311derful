@@ -116,6 +116,8 @@ Voice behaviour comes from `GET /api/config` — **there is no user-facing voice
 
 Show the interim transcript live while someone speaks — that's what makes the wait feel like nothing.
 
+**If you wire up Vapi, one thing will bite you.** Its `final` transcript does *not* mean the person finished talking — the transcriber emits one at every pause, so a single sentence arrives in pieces ("Okay. Um." / "He." / "Do."). Submitting on the first `final` asks the backend about the first two words. Accumulate the finals and submit after ~1.8s of silence; a `partial` means they're still going, so it cancels the pending submit. `reference.html` does exactly this. Web Speech doesn't have this problem — its `isFinal` is genuinely final.
+
 **Result** — behind a **Report ↔ Chat** toggle, defaulting to **Report**:
 
 - **Report** (default): headline resolved-%, local-vs-citywide comparison, outcome bars colour-coded resolved vs failure with per-outcome median days, "what changes the odds" tips, and the draft with a copy button. This is the anti-chatbot view and the one that should be on screen when judges are watching.
@@ -135,6 +137,7 @@ Not edge cases. Several of these will happen during the demo.
 4. **`unclassified_count > 0`** — footnote it ("N more couldn't be classified and are excluded"). Being honest about coverage is part of the pitch.
 5. **`geo_level` isn't `COMMUNITY_BOARD`** — say "citywide" or "in your borough". Never imply it's their district when it isn't.
 6. **No `SpeechRecognition` in the browser** — hide the mic, keep everything else. Never block on voice.
+6b. **Microphone blocked** — check `navigator.permissions.query({name:"microphone"})`. If it's `denied`, Chrome shows no prompt and the mic silently hears nothing, which is indistinguishable from a broken app. Say so and tell them how to unblock. Note the permission is per-origin *including the port*, so `:5173` and `:8000` have separate settings.
 7. **Loading** — name the work ("checking 22 million records…"). Two model calls means a few seconds; a bare spinner feels broken.
 8. **`llm_configured: false`** — no API key is set, so `/api/ask` will fail. Say so up front rather than on submit.
 
@@ -146,7 +149,7 @@ Evidence, not chat. Big numbers, honest bars, generous whitespace, one accent co
 
 Please avoid the default-AI-app look — no purple gradients, no chat bubbles in the primary view. **The outcome bars are the hero element**; they're what makes "closing isn't fixing" legible in one glance.
 
-`frontend/index.html` is a working reference implementation — one file, no build step. It proves the flow end to end and shows the voice wiring, the history sidebar, and every state above. **Port the logic, ignore the styling.** It is not the product.
+`frontend/reference.html` is a working reference implementation — one file, no build step. It proves the flow end to end and shows the voice wiring, the history sidebar, and every state above. **Port the logic, ignore the styling.** It is not the product.
 
 ---
 

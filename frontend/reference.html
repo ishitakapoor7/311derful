@@ -64,6 +64,11 @@
   button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
   button[disabled] { opacity:.5; cursor:default; }
   #mic.listening { background:var(--bad); border-color:var(--bad); color:#fff; }
+  /* Distinct from listening on purpose: the call takes ~5s to come up, and the
+     button must not look ready to hear before it is. */
+  #mic.connecting { background:transparent; border-style:dashed; opacity:.65; }
+  #mic.connecting { animation:pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.3; } }
   .stack { display:flex; flex-direction:column; gap:.5rem; }
   .card {
     background:var(--card); border:1px solid var(--line); border-radius:12px;
@@ -148,6 +153,58 @@ navigator.geolocation?.getCurrentPosition(
   { timeout: 5000 }
 );
 
+// Voice state. MUST be declared before the boot block below calls the init
+// functions. Function declarations hoist, but `let` bindings sit in the
+// temporal dead zone until this line runs -- with these declared after the
+// boot block, `vapi = new Vapi(...)` threw "Cannot access 'vapi' before
+// initialization", the catch swallowed it, and the mic button was never
+// unhidden. Web Speech failed the same way, uncaught, taking loadHistory()
+// with it.
+let listening = false, recognition = null, vapi = null;
+
+// Set while we are deliberately hanging up, so the ejection error that follows
+// is not reported as a failure.
+let endingByUs = false;
+
+// Restarts the 30s idle hang-up. Assigned by initVapi; a no-op on the other
+// paths. speak() calls it so answering a question buys a fresh window to ask
+// the next one rather than counting toward the timeout.
+let keepCallAlive = () => {};
+
+// The original description, held while a clarifying question is on screen so
+// the answer can be appended to it instead of replacing it.
+let pendingContext = "";
+const TEXT_PLACEHOLDER = $("text").placeholder;
+
+// How long a speaker has to stay quiet before we treat the utterance as
+// finished. Long enough to survive a mid-sentence breath, short enough that the
+// pause does not read as the app having missed the question.
+const SILENCE_MS = 1800;
+
+// Same reason this sits above the boot block: `await initVapi()` suspends the
+// whole module body, so the awaited continuation runs while every `const`
+// below it is still in the temporal dead zone.
+const MIC_BLOCKED_MSG =
+  "Microphone is blocked for this site. Click the icon at the left of the address bar → " +
+  "Microphone → Allow, then reload. You can still type.";
+
+/**
+ * True if this origin has a stored "Block" for the microphone.
+ *
+ * Worth its own check because a denied permission is indistinguishable from a
+ * working mic that heard nothing: Chrome shows no prompt, getUserMedia rejects
+ * inside the SDK, and the call opens deaf. The permission is per-origin
+ * *including the port*, so allowing :8000 does nothing for :8091 -- which is
+ * exactly how you end up blocked without remembering blocking anything.
+ */
+async function micBlocked() {
+  try {
+    return (await navigator.permissions.query({ name: "microphone" })).state === "denied";
+  } catch {
+    return false;              // Firefox/Safari don't expose this query; let the call try.
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Boot: the backend decides which voice path is live.
 // ---------------------------------------------------------------------------
@@ -171,8 +228,6 @@ loadHistory();
 // Path A — browser SpeechRecognition. No keys, no cost. Cannot detect the
 // spoken language, so the backend sends a language list and we show a picker.
 // ---------------------------------------------------------------------------
-let listening = false, recognition = null, vapi = null;
-
 function initWebSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
@@ -200,8 +255,11 @@ function initWebSpeech() {
   };
   recognition.onend = () => setListening(false);
 
-  $("mic").onclick = () => {
+  micBlocked().then((b) => { if (b) $("status").textContent = MIC_BLOCKED_MSG; });
+
+  $("mic").onclick = async () => {
     if (listening) return recognition.stop();
+    if (await micBlocked()) return void ($("status").textContent = MIC_BLOCKED_MSG);
     recognition.lang = $("lang").value;
     recognition.start();
     setListening(true);
@@ -226,6 +284,23 @@ async function initVapi() {
     vapi = new Vapi(CONFIG.vapi_public_key);
     $("mic").hidden = false;
 
+    // This file is a <script type="module">, so everything here is module-scoped
+    // and invisible to the devtools console -- typing `vapi` there gets you
+    // "vapi is not defined" whether or not the SDK loaded, which makes the
+    // console useless for diagnosing voice. Hang the handle on window so it
+    // isn't, and keep a log of every event so a failed attempt leaves evidence
+    // instead of silence.
+    window.__vapi = vapi;
+    window.__vapiLog = [];
+    for (const ev of ["call-start", "call-end", "speech-start", "speech-end",
+                      "volume-level", "message", "error"]) {
+      vapi.on(ev, (payload) => {
+        if (ev === "volume-level") return;             // fires ~10x/sec, drowns the rest
+        window.__vapiLog.push({ ev, payload });
+        console.log("[vapi]", ev, payload);
+      });
+    }
+
     // Silence the assistant's own LLM the moment the call connects. Without
     // this it answers in its own words alongside our say(), and its answer
     // would not be grounded in the cube. 'mute-assistant' is a documented
@@ -234,26 +309,99 @@ async function initVapi() {
       vapi.send({ type: "control", control: "mute-assistant" });
     });
 
-    vapi.on("message", (m) => {
-      // NOTE: the SDK types this event as `any` — the transcript shape below
-      // matches Vapi's documented server events but is NOT type-guaranteed.
-      // First thing to check if voice input silently does nothing:
-      //   vapi.on("message", console.log)
-      if (m?.type !== "transcript" || m?.role !== "user") return;
-      if (m.transcriptType === "partial") $("interim").textContent = m.transcript;
-      if (m.transcriptType === "final") {
-        $("interim").textContent = "";
-        $("text").value = m.transcript;
-        ask();                       // transcript is final: go straight to the answer
-      }
-    });
-    vapi.on("error", (e) => { $("status").textContent = `Vapi: ${e?.message ?? e}`; setListening(false); });
-    vapi.on("call-end", () => setListening(false));
+    // Shape confirmed against a live call:
+    //   {type:'transcript', role:'user', transcriptType:'partial'|'final', transcript}
+    //
+    // `final` does NOT mean "done talking" -- the transcriber emits one at every
+    // endpoint, so a single sentence arrives as several. A real call produced
+    // finals of "Okay. Um." / "He." / "Do." from one continuous utterance.
+    // Submitting on the first final therefore asked the backend about "Okay. Um."
+    // and, because say() ends the call, threw the rest of the sentence away.
+    //
+    // So: accumulate finals and submit only after the speaker has actually
+    // stopped. Silence is the end-of-thought signal; `final` is just a comma.
+    let utterance = [];
+    let submitTimer = null;
 
-    $("mic").onclick = () => {
-      if (listening) return vapi.stop();
-      vapi.start(CONFIG.vapi_assistant_id);
-      setListening(true);
+    const submitLater = () => {
+      clearTimeout(submitTimer);
+      submitTimer = setTimeout(() => {
+        const full = utterance.join(" ").replace(/\s+/g, " ").trim();
+        utterance = [];
+        if (!full) return;
+        $("interim").textContent = "";
+        $("text").value = full;
+        ask();
+      }, SILENCE_MS);
+    };
+
+    const resetUtterance = () => { clearTimeout(submitTimer); utterance = []; };
+
+    vapi.on("message", (m) => {
+      if (m?.type !== "transcript" || m.role !== "user" || !m.transcript) return;
+
+      if (m.transcriptType === "partial") {
+        // Still talking: hold off the submit and show the sentence so far.
+        clearTimeout(submitTimer);
+        $("interim").textContent = [...utterance, m.transcript].join(" ");
+        return;
+      }
+      utterance.push(m.transcript);
+      $("interim").textContent = utterance.join(" ");
+      submitLater();
+    });
+
+    vapi.on("error", (e) => {
+      // Ending a call ejects us from the underlying Daily room, which surfaces
+      // as a daily-error immediately afterwards. That is the call working, not
+      // failing, and it must not overwrite the answer on screen.
+      if (endingByUs) return;
+      $("status").textContent = `Vapi: ${e?.message ?? e}`;
+      setListening(false);
+    });
+
+    // Billing guard: if someone opens the mic and never speaks, the call would
+    // sit open and bill by the minute. Hang up after 30s of silence.
+    let idleTimer = null;
+    const resetIdle = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        if (!listening) return;
+        endingByUs = true;           // our hang-up, so don't report the ejection
+        vapi.stop();
+      }, 30_000);
+    };
+    keepCallAlive = resetIdle;       // speak() needs it; the call now outlives the answer
+    vapi.on("speech-start", resetIdle);
+    vapi.on("call-start", () => {
+      endingByUs = false;
+      resetUtterance();
+      setMic("live");                // only now can it actually hear anything
+      resetIdle();
+    });
+    vapi.on("call-end", () => {
+      clearTimeout(idleTimer);
+      resetUtterance();              // a half-heard sentence must not leak into the next call
+      setListening(false);
+    });
+
+    if (await micBlocked()) $("status").textContent = MIC_BLOCKED_MSG;
+
+    $("mic").onclick = async () => {
+      if (listening) { endingByUs = true; return vapi.stop(); }
+      if (await micBlocked()) return void ($("status").textContent = MIC_BLOCKED_MSG);
+      setMic("connecting");          // ~5s before call-start; do not claim to be listening yet
+      resetIdle();
+      try {
+        // start() is async and rejects on a bad assistant id, exhausted
+        // credits, or a denied mic. Unawaited, every one of those failures
+        // looked identical to a working call that heard nothing.
+        await vapi.start(CONFIG.vapi_assistant_id);
+      } catch (err) {
+        console.error("[vapi] start failed", err);
+        $("status").textContent = `Vapi couldn't start the call: ${err?.message ?? err}. You can still type.`;
+        setListening(false);
+      }
     };
   } catch (err) {
     // Never let a voice failure take the page with it.
@@ -261,17 +409,44 @@ async function initVapi() {
   }
 }
 
-function setListening(on) {
-  listening = on;
-  $("mic").classList.toggle("listening", on);
-  $("mic").textContent = on ? "◼ Stop" : "🎤 Speak";
-  if (!on) $("interim").textContent = "";
-  $("status").textContent = on ? "Listening…" : "";
+/**
+ * Mic state: "idle" | "connecting" | "live".
+ *
+ * "connecting" exists because Vapi takes ~5s to bring a call up (measured:
+ * 4.9ms to paint the button, 5383ms to call-start). A button that goes red
+ * instantly is lying for those five seconds, and everything said into them is
+ * lost -- so the button has to say when it is actually able to hear.
+ * Web Speech starts in milliseconds and goes straight to "live".
+ */
+function setMic(state) {
+  listening = state !== "idle";
+  const mic = $("mic");
+  mic.classList.toggle("listening", state === "live");
+  mic.classList.toggle("connecting", state === "connecting");
+  mic.textContent = state === "idle" ? "🎤 Speak" : "◼ Stop";
+  if (state === "idle") $("interim").textContent = "";
+  $("status").textContent =
+    state === "connecting" ? "Connecting to the mic…"
+    : state === "live" ? "Listening — go ahead."
+    : "";
 }
+
+// A declaration, not a `const` arrow: everything in this file that can be
+// reached from the awaited boot block has to hoist.
+function setListening(on) { setMic(on ? "live" : "idle"); }
 
 /** Speak a reply through whichever path is live. */
 function speak(text, lang) {
-  if (CONFIG.voice_mode === "vapi" && vapi) return void vapi.say(text);
+  // Deliberately NOT say(text, endCallAfterSpoken=true). Bringing a Vapi call
+  // up costs ~5.4s, so hanging up after each answer made every follow-up
+  // question pay that again -- five seconds of dead air per turn, with the
+  // button already red. Keeping the call open means only the first question
+  // pays it and follow-ups are instant. The 30s idle hang-up below is what
+  // stops the meter running, so an open mic still can't be left billing.
+  if (CONFIG.voice_mode === "vapi" && vapi) {
+    keepCallAlive();
+    return void vapi.say(text);
+  }
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
@@ -288,8 +463,11 @@ $("text").addEventListener("keydown", (e) => {
 });
 
 async function ask() {
-  const text = $("text").value.trim();
-  if (!text) return;
+  const answer = $("text").value.trim();
+  if (!answer) return;
+  // After a clarifying question this is the answer, not a new complaint: send
+  // both halves so the backend classifies the whole problem.
+  const text = pendingContext ? `${pendingContext}. ${answer}` : answer;
   $("go").disabled = true;
   $("out").innerHTML = "";
   // Two model calls means a few seconds. Name the work rather than spinning.
@@ -332,11 +510,21 @@ function render(d) {
 
   // Weak taxonomy match: ask rather than forecast against the wrong category.
   if (d.intake.clarifying_question) {
+    // Keep the original description and clear the box, so the next thing said
+    // or typed is read as the ANSWER and appended. Leaving the old words in
+    // place made the answer overwrite them, and "at 2am, upstairs" without
+    // "loud music" is a worse query than either half -- which is the whole
+    // reason the backend asked.
+    pendingContext = $("text").value.trim();
+    $("text").value = "";
+    $("text").placeholder = "Answer that, and I'll use it with what you already said…";
     $("out").innerHTML = `<div class="card"><div class="label">One quick question</div>
       <p>${esc(d.intake.clarifying_question)}</p></div>`;
     speak(d.intake.clarifying_question, d.intake.detected_lang);
     return;
   }
+  pendingContext = "";
+  $("text").placeholder = TEXT_PLACEHOLDER;
 
   const f = d.forecast, a = d.advice;
   const where = { COMMUNITY_BOARD:"in your district", BOROUGH:"in your borough", CITYWIDE:"citywide" }[f.geo_level];
