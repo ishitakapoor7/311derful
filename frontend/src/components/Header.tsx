@@ -25,7 +25,7 @@ export function Header({ route }: { route: Route }) {
 
           <nav className="nav">
             <button onClick={() => navigate('explore')} aria-current={route === 'explore'}>
-              Where_it_dies
+              Citywide_data
             </button>
           </nav>
 

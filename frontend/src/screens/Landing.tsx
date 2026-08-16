@@ -79,7 +79,7 @@ export function Landing() {
               <span className="lp-or">
                 Or browse{' '}
                 <button className="linklike" onClick={() => navigate('explore')}>
-                  Where_complaints_die
+                  Citywide_data
                 </button>
               </span>
             </div>
@@ -195,7 +195,7 @@ export function Landing() {
               Run_forecast
             </button>
             <button className="btn btn-ghost" onClick={() => navigate('explore')}>
-              Where_complaints_die
+              Citywide_data
             </button>
           </div>
 
@@ -204,11 +204,6 @@ export function Landing() {
           </div>
         </div>
 
-        {/* We cannot file anything. That has to stay on the landing page, not
-            only in the small print under a result. */}
-        <p className="lp-cannot">
-          We do not file complaints — you submit the draft. NYC has no public 311 write API.
-        </p>
       </div>
     </div>
   )

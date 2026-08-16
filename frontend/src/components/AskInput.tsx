@@ -156,13 +156,27 @@ export function AskInput({ config, busy, onSubmit }: Props) {
             style={{ flex: '1 1 160px', minWidth: 0 }}
           />
 
+          {/* A crosshair, not a map pin: this fills the field with where you
+              are now, rather than marking a place on a map. aria-label carries
+              the name because the glyph it replaces was not one. */}
           <button
-            className="btn btn-sm btn-ghost"
+            className="btn btn-sm btn-ghost locate"
             onClick={useMyLocation}
             disabled={busy || locating}
-            title="Use my location"
+            aria-label={locating ? 'Finding your location' : 'Use my location'}
+            title={locating ? 'Finding your location…' : 'Use my location'}
+            data-locating={locating}
           >
-            {locating ? '…' : '◎'}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="6.5" stroke="currentColor" strokeWidth="2" />
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+              <path
+                d="M12 1.5v3.5M12 19v3.5M1.5 12h3.5M19 12h3.5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
 
           <div className="spacer" />
