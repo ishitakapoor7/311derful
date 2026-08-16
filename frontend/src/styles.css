@@ -883,9 +883,15 @@ button {
   align-items: baseline;
 }
 
+/* A tip targets this ending. Marked with a rule in the margin rather than a
+   tint, because the tinted row is reliably the row holding a failure bar and
+   the accent sits eight hue steps from the failure red -- two meanings, one
+   colour, touching. The margin cancels the border plus padding, so the text
+   stays aligned with the rows above and below. */
 .bar-row.is-targeted {
-  background: var(--accent-soft);
-  box-shadow: -12px 0 0 var(--accent-soft), 12px 0 0 var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  margin-left: -16px;
+  padding-left: 13px;
 }
 
 /* The pill from "what closed actually means" — the ending, named plainly. */
@@ -1800,10 +1806,6 @@ td.num {
     border-top: 1px solid var(--rule);
     margin-left: 0;
     padding-left: 0;
-  }
-
-  .bar-row.is-targeted {
-    box-shadow: none;
   }
 
   .cta-banner {
