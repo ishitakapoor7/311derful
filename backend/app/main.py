@@ -35,6 +35,8 @@ from app.models import (
     AdviseResponse,
     AskRequest,
     AskResponse,
+    BoardsResponse,
+    BoardShare,
     ConfigResponse,
     ExploreResponse,
     ExploreRow,
@@ -319,6 +321,52 @@ def explore(limit: int = 40) -> ExploreResponse:
         ],
         total_records=int(total_records or 0),
         classified_share=float(classified or 0.0),
+    )
+
+
+@app.get("/api/explore/boards", response_model=BoardsResponse)
+def explore_boards(complaint_type: str) -> BoardsResponse:
+    """Resolution rate per community board for one complaint type.
+
+    This is what turns the finding from a statistic into a map. The citywide
+    number says three in four plumbing complaints end unaddressed; this says
+    which districts carry that and which do not, and it is the same underlying
+    cube cell the personal forecast reads.
+
+    Boards thinner than the LOW confidence floor are dropped rather than drawn:
+    a district rendered bright red off nine records is a lie told in colour,
+    and on a map there is nowhere to put the caveat.
+    """
+    resolved = ", ".join(f"'{o.value}'" for o in RESOLVED_OUTCOMES)
+
+    rows = cube().execute(
+        f"""
+        SELECT geo_key,
+               sum(n) FILTER (WHERE outcome IN ({resolved})) / sum(n)::DOUBLE,
+               sum(n)
+        FROM cube
+        WHERE geo_level = 'COMMUNITY_BOARD' AND time_window = 'RECENT'
+          AND complaint_type = ?
+          AND descriptor = 'ALL' AND month = 'ALL' AND channel = 'ALL'
+          AND outcome <> 'UNCLASSIFIED'
+          -- 311 writes 'Unspecified QUEENS' when it never captured a district.
+          -- That is a missing value, not a place, and there is nothing on a
+          -- map to colour for it.
+          AND geo_key NOT ILIKE 'Unspecified%'
+        GROUP BY geo_key
+        HAVING sum(n) >= 30
+        ORDER BY sum(n) DESC
+        """,
+        [complaint_type],
+    ).fetchall()
+
+    return BoardsResponse(
+        complaint_type=complaint_type,
+        rows=[
+            BoardShare(board=b, resolved_share=share or 0.0, total=int(total))
+            for b, share, total in rows
+        ],
+        verified=True,
     )
 
 

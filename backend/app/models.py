@@ -431,6 +431,34 @@ class ExploreRow(BaseModel):
     dominant_failure_share: float | None
 
 
+class BoardShare(BaseModel):
+    """One community board's record on a single complaint type."""
+
+    board: str = Field(..., description="311's own spelling, e.g. '12 MANHATTAN'.")
+    resolved_share: float = Field(..., ge=0.0, le=1.0)
+    total: int
+
+
+class BoardsResponse(BaseModel):
+    """Per-district resolution rates -- the map view.
+
+    This is where the argument stops being a citywide statistic and becomes
+    local: the same complaint resolves at very different rates depending on
+    which district it is filed from.
+    """
+
+    complaint_type: str
+    rows: list[BoardShare]
+    verified: bool = Field(
+        True,
+        description=(
+            "True when computed from the dataset. The frontend's mock returns "
+            "False for generated data, so the UI can refuse to present "
+            "invented numbers as measured ones."
+        ),
+    )
+
+
 class ExploreResponse(BaseModel):
     """Citywide findings view -- 'where complaints go to die'.
 
