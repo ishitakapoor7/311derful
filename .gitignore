@@ -217,7 +217,20 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# 311 data: cached Socrata chunks, the DuckDB cube, and the boundary file.
-# Roughly 1GB once the full ingest completes, and all of it is reproducible
-# from `python -m app.data.ingest` — never commit it.
-backend/data/
+# 311 data: cached Socrata chunks and the DuckDB cube. Roughly 2GB once the
+# full ingest completes, and all of it is reproducible from
+# `python -m app.data.ingest` — never commit it.
+#
+# Written as `data/*` rather than `data/`: git will not descend into an
+# excluded directory, so with the directory itself excluded the re-includes
+# below would never be considered.
+backend/data/*
+
+# ...except the small derived reference files, ~3.9MB together. They are what
+# the app needs at runtime besides the cube: community district boundaries for
+# offline geocoding, the 311 taxonomy, and the recovered intake form map.
+# Rebuilding them requires network calls, so a deploy that cannot reach
+# Socrata still has to work — they ship.
+!backend/data/reference/
+!backend/data/reference/*.json
+!backend/data/reference/*.geojson

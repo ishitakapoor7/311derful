@@ -272,6 +272,31 @@ class AskRequest(BaseModel):
     )
 
 
+class FormOption(BaseModel):
+    """One choice on a 311 dropdown, with how often people pick it."""
+
+    value: str
+    share: float = Field(..., ge=0.0, le=1.0)
+
+
+class FormField(BaseModel):
+    """A question 311's intake form asks for this complaint type."""
+
+    column: str = Field(..., description="The dataset column it was recovered from.")
+    question: str
+    always: bool = Field(
+        ...,
+        description=(
+            "False when the field is conditional on an earlier answer, so the "
+            "UI can say 'may ask' rather than presenting it as required."
+        ),
+    )
+    fill_rate: float = Field(..., ge=0.0, le=1.0)
+    options: list[FormOption] | None = Field(
+        None, description="Present for dropdowns, ordered by how often chosen."
+    )
+
+
 class AskResponse(BaseModel):
     intake: IntakeResponse
     forecast: ForecastResponse | None = Field(
@@ -284,6 +309,15 @@ class AskResponse(BaseModel):
         description=(
             "False when the location was approximated (ZIP fallback) or "
             "unknown, so the caller can say so rather than implying precision."
+        ),
+    )
+    form_fields: list[FormField] = Field(
+        default_factory=list,
+        description=(
+            "What 311 will ask when this complaint is filed, recovered from "
+            "which dataset columns this complaint type populates. Empty when "
+            "the complaint type is not in the form map -- absence means "
+            "unknown, never 'nothing is asked'."
         ),
     )
 

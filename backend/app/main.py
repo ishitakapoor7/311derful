@@ -27,6 +27,7 @@ from app.config import (
     resolved_voice_mode,
 )
 from app.forecast import forecast as run_forecast
+from app.formmap import fields_for
 from app.geocode import from_latlon, from_zip
 from app.models import (
     RESOLVED_OUTCOMES,
@@ -215,6 +216,9 @@ def ask(req: AskRequest) -> AskResponse:
         advice=advice,
         community_board=location[0],
         location_exact=location[1],
+        # What 311 will actually ask when they go to file it. Recovered from
+        # which columns this complaint type populates, not scraped.
+        form_fields=fields_for(intake_result.complaint_type),
     )
 
     # History is a side effect, never a reason to fail the request: the person
