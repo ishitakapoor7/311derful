@@ -49,8 +49,14 @@ export function Footer() {
         </nav>
 
         <div className="footer-col footer-cannot">
-          <p className="footer-head footer-head-accent">WE DO NOT FILE COMPLAINTS</p>
+          <p className="footer-head footer-head-accent">WE DO NOT FILE COMPLAINTS *</p>
           <p>THE DRAFT IS YOURS TO SUBMIT</p>
+          {/* The reason, rather than only the rule. This used to sit under the
+              intake field, where it was the third thing competing for attention
+              before anyone had typed anything. */}
+          <p className="footer-aside">
+            * NYC has no public write API for 311, so nothing can be filed on your behalf.
+          </p>
         </div>
       </div>
     </footer>

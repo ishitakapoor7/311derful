@@ -78,6 +78,25 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* The page is a column at least as tall as the viewport, so a screen with
+   little on it does not end the dark footer halfway down and leave paper
+   showing underneath. `main` takes the slack; the chrome keeps its own height. */
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+.header,
+.footer {
+  flex-shrink: 0;
+}
+
 h1,
 h2,
 h3 {
@@ -569,11 +588,14 @@ button {
   margin-bottom: 26px;
 }
 
+/* The language pills sit directly above this, and at 18px of their own margin
+   the button was crowding them. The call to action gets its own air. */
 .lp-actions {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
   align-items: center;
+  margin-top: 30px;
   margin-bottom: 20px;
 }
 
@@ -944,14 +966,18 @@ button {
 
 /* The one promise the product must never overstate, said beside the field it
    applies to rather than in the small print under a result. */
-.intake-note {
-  margin: 14px 0 0;
-  max-width: 56ch;
-  font-size: 13px;
+/* The filing caveat moved to the footer, so the only things under the field are
+   the language line and the chips. They read as one strip rather than as two
+   separate announcements. */
+.footer-aside {
+  margin-top: 14px;
+  font-family: var(--sans);
+  font-size: 12.5px;
   line-height: 1.5;
-  color: var(--ink-3);
-  border-left: 2px solid var(--rule-2);
-  padding-left: 12px;
+  letter-spacing: 0;
+  color: color-mix(in oklch, var(--paper) 62%, transparent);
+  max-width: 34ch;
+  margin-left: auto;
 }
 
 .field-bar input[type='text'] {
@@ -1630,40 +1656,68 @@ button {
   margin-bottom: 6px;
 }
 
-.toggle {
-  display: inline-flex;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.toggle button {
-  background: none;
-  border: 0;
-  padding: 7px 14px;
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.toggle button[aria-pressed='true'] {
-  background: var(--ink);
-  color: var(--paper);
-}
-
-.toggle button:hover:not([aria-pressed='true']) {
-  background: var(--paper-3);
-  color: var(--ink);
-}
-
-/* The toggle sits above the result, right-aligned, so the headline number is
-   still the first thing the eye lands on. */
 .result-head {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-bottom: 20px;
+}
+
+/* ---------- report call to action ----------
+   The one thing to press once an answer has landed. Accent-filled because it is
+   the product's own voice offering something, not a measured share -- the
+   failure colour is never used for a control. */
+
+.report-cta {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  background: var(--accent);
+  color: var(--paper);
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 16px 18px;
+  transition: filter 0.12s ease;
+}
+
+.report-cta:hover {
+  filter: brightness(1.08);
+}
+
+.report-cta:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.report-cta-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.report-cta-body {
+  font-size: 14.5px;
+  line-height: 1.45;
+  flex: 1 1 auto;
+  min-width: 0;
+  opacity: 0.92;
+}
+
+.report-cta-go {
+  font-size: 18px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 620px) {
+  .report-cta {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
 }
 
 .chat .turn:last-child {
@@ -2185,17 +2239,27 @@ td.num {
   position: relative;
 }
 
+/* Capped by height, not width. Left to fill the 1140px wrap, a 760x720 viewBox
+   renders over 1000px tall -- taller than most viewports, so the bottom of the
+   city fell off the screen and you had to scroll to see Staten Island. The cap
+   is expressed as a max-width derived from the viewBox ratio rather than a
+   max-height, because constraining an SVG's height letterboxes it inside a
+   full-width box and leaves dead space either side instead of shrinking it. */
 .map {
+  --map-max-h: min(62vh, 600px);
   width: 100%;
+  max-width: calc(var(--map-max-h) * 760 / 720);
   height: auto;
   display: block;
+  margin: 0 auto;
 }
 
 .map-skeleton {
   border: 1px solid var(--rule);
   border-radius: var(--radius-md);
   background: var(--paper-2);
-  height: 420px;
+  /* Matches the drawn map's cap, so the layout does not jump when it lands. */
+  height: min(62vh, 600px);
 }
 
 .board {

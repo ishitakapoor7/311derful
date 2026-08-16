@@ -79,9 +79,11 @@ export function Ask() {
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [lastRequest, setLastRequest] = useState<AskRequest | null>(null)
-  // Report is the default and the one that should be on screen when judges are
-  // watching. Chat is the same data, conversational framing.
-  const [view, setView] = useState<ResultView>('report')
+  // The answer arrives in the thread, and the report is opened from it. A
+  // segmented Report/Chat control used to sit above the result, which put a
+  // control between the question and its answer and moved down the page every
+  // time the content changed.
+  const [view, setView] = useState<ResultView>('chat')
   const [turns, setTurns] = useState<Turn[]>([])
   // Set only when a history entry is opened whose full response is not cached.
   const [stored, setStored] = useState<HistoryEntry | null>(null)
@@ -124,6 +126,10 @@ export function Ask() {
       setError(null)
       setStored(null)
       setLastRequest(request)
+      // Anything newly asked is answered in the thread. Without this, asking a
+      // follow-up while the report is open would drop you straight into the next
+      // report and the reply itself would never be seen.
+      setView('chat')
 
       try {
         const result = await ask(request)
@@ -288,22 +294,31 @@ export function Ask() {
             />
           )}
 
-          {!busy && response?.forecast && (
+          {/* The answer is already in the thread above. This offers the long
+              form rather than showing it: one thing to press, in one place,
+              instead of a two-state control that moved with the content. */}
+          {!busy && response?.forecast && view === 'chat' && (
+            <button className="report-cta" onClick={() => setView('report')}>
+              <span className="report-cta-tag">Report ready</span>
+              <span className="report-cta-body">
+                All {response.forecast.outcomes.length} outcomes for{' '}
+                {response.intake.complaint_type.toLowerCase()}, what changes the odds, and your
+                draft.
+              </span>
+              <span className="report-cta-go" aria-hidden="true">
+                →
+              </span>
+            </button>
+          )}
+
+          {!busy && response?.forecast && view === 'report' && (
             <div>
               <div className="result-head">
-                <div className="toggle" role="group" aria-label="Result view">
-                  <button aria-pressed={view === 'report'} onClick={() => setView('report')}>
-                    Report
-                  </button>
-                  <button aria-pressed={view === 'chat'} onClick={() => setView('chat')}>
-                    Chat
-                  </button>
-                </div>
+                <button className="btn btn-sm btn-ghost" onClick={() => setView('chat')}>
+                  ← Back to the conversation
+                </button>
               </div>
-
-              {/* In chat view the newest turn is already in the transcript
-                  above, so only the report needs rendering here. */}
-              {view === 'report' && <ReportView response={response} />}
+              <ReportView response={response} />
             </div>
           )}
 
@@ -346,14 +361,6 @@ export function Ask() {
             {/* Only before the first turn: once there is a thread, the chips
                 would be offering to throw it away. */}
             {turns.length === 0 && <ExampleChips disabled={busy} onPick={handleExample} />}
-
-            {/* Said beside the field, before the tool is used rather than in the
-                small print under a result: NYC has no public write API for 311,
-                and what the product produces is a draft. */}
-            <p className="intake-note">
-              We can't file it for you — NYC has no public write API for 311. What you get is a
-              draft to submit yourself.
-            </p>
           </div>
         </div>
 
