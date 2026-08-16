@@ -226,8 +226,20 @@ async function initVapi() {
     vapi = new Vapi(CONFIG.vapi_public_key);
     $("mic").hidden = false;
 
+    // Silence the assistant's own LLM the moment the call connects. Without
+    // this it answers in its own words alongside our say(), and its answer
+    // would not be grounded in the cube. 'mute-assistant' is a documented
+    // control message (see ControlMessages in @vapi-ai/web types).
+    vapi.on("call-start", () => {
+      vapi.send({ type: "control", control: "mute-assistant" });
+    });
+
     vapi.on("message", (m) => {
-      if (m.type !== "transcript" || m.role !== "user") return;
+      // NOTE: the SDK types this event as `any` — the transcript shape below
+      // matches Vapi's documented server events but is NOT type-guaranteed.
+      // First thing to check if voice input silently does nothing:
+      //   vapi.on("message", console.log)
+      if (m?.type !== "transcript" || m?.role !== "user") return;
       if (m.transcriptType === "partial") $("interim").textContent = m.transcript;
       if (m.transcriptType === "final") {
         $("interim").textContent = "";
