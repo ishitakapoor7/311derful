@@ -7,6 +7,8 @@ import { OutcomeBars } from './OutcomeBars'
 import { ProvenanceChip, ScopeNote } from './ProvenanceChip'
 import { Tips } from './Tips'
 import { CloseTheLoop } from './CloseTheLoop'
+import { FormFields } from './FormFields'
+import { Disclosure } from './Disclosure'
 import { ProvenanceFooter } from './Provenance'
 import { ShareResult } from './ShareResult'
 
@@ -131,27 +133,21 @@ export function ReportView({ response }: { response: AskResponse }) {
         )}
       </div>
 
-      {/* ---- the hero element ---- */}
+      {/* ---- the hero element ----
+          The dominant failure used to get its own callout section below this,
+          which restated a bar the reader had just looked at. It is one line
+          above the chart now: it is the finding, not a second section. */}
       <div className="section">
-        <p className="label">What actually happens — all {forecast.outcomes.length} outcomes</p>
+        <p className="label">What actually happens</p>
+        {dominantFailure && (
+          <p className="bars-lead">
+            Most end as <strong>{outcomeLabel(dominantFailure.outcome).toLowerCase()}</strong> —{' '}
+            {pct(dominantFailure.share)}, {count(dominantFailure.count)} complaints, median{' '}
+            {dominantFailure.median_days_to_close ?? '—'} days to close.
+          </p>
+        )}
         <OutcomeBars outcomes={forecast.outcomes} targeted={targeted} />
       </div>
-
-      {/* ---- dominant failure ---- */}
-      {dominantFailure && (
-        <div className="section">
-          <p className="label">The most common ending</p>
-          <div className="callout">
-            <h3>
-              {outcomeLabel(dominantFailure.outcome)} — {pct(dominantFailure.share)} of the time.
-            </h3>
-            <p className="mono muted" style={{ marginTop: 10, marginBottom: 0 }}>
-              {count(dominantFailure.count)} complaints · median{' '}
-              {dominantFailure.median_days_to_close ?? '—'} days to close
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* ---- tips ---- */}
       {advice.tips.length > 0 && (
@@ -161,29 +157,50 @@ export function ReportView({ response }: { response: AskResponse }) {
         </div>
       )}
 
+      {/* ---- what the form will ask ----
+          Immediately before the draft: read the questions, gather the answers,
+          then copy the draft and open 311. Hides itself when the complaint type
+          is not in the recovered form map. */}
+      {response.form_fields?.length > 0 && (
+        <div className="section">
+          <p className="label">What 311 will ask you</p>
+          <FormFields fields={response.form_fields} />
+        </div>
+      )}
+
       {/* ---- close the loop ---- */}
       <div className="section">
         <p className="label">File it, then check back</p>
         <CloseTheLoop draftText={advice.draft_text} forecast={forecast} />
       </div>
 
-      {/* ---- share ---- */}
-      <div className="section">
-        <ShareResult response={response} />
-      </div>
+      {/* ---- the supporting material ----
+          Sharing and provenance are things people reach for, not things they
+          read on the way down. The sample size and confidence tier are NOT in
+          here -- those sit welded to the figure itself, where the project's
+          first invariant requires them. */}
+      <div className="section report-more">
+        <Disclosure summary="Share this result">
+          <ShareResult response={response} />
+        </Disclosure>
 
-      {/* ---- provenance, once, at the foot ---- */}
-      <ProvenanceFooter
-        verified={[
-          'this outcome split and every count',
-          'median days to close, per outcome',
-          'sample size and confidence tier',
-        ]}
-        // The model phrases; it never produces a figure. Offline the prose ships
-        // with the fixtures, live it is written per request in the caller's
-        // language. Every number is a cube lookup either way.
-        written={['the narrative, the tips and the draft complaint']}
-      />
+        <Disclosure summary="Where this number comes from">
+          <ProvenanceFooter
+            verified={[
+              'this outcome split and every count',
+              'median days to close, per outcome',
+              'sample size and confidence tier',
+              ...(response.form_fields?.length
+                ? ['the intake questions, recovered from column fill patterns']
+                : []),
+            ]}
+            // The model phrases; it never produces a figure. Offline the prose
+            // ships with the fixtures, live it is written per request in the
+            // caller's language. Every number is a cube lookup either way.
+            written={['the narrative, the tips and the draft complaint']}
+          />
+        </Disclosure>
+      </div>
     </div>
   )
 }

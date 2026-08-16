@@ -2,24 +2,41 @@ import { useEffect, useRef, useState } from 'react'
 import type { ConfigResponse, InputSource } from '../types/api'
 import { isRecognitionSupported, startDictation, type DictationSession } from '../lib/speech'
 
+/**
+ * The locale SpeechRecognition listens in.
+ *
+ * Web Speech cannot detect the spoken language -- it has to be told before it
+ * listens -- and there is no picker any more, so dictation is English-only.
+ * Typing is not: the request carries no language at all, and the backend detects
+ * one from the text, so a complaint typed in any language still gets an answer
+ * back in that language.
+ */
+const DICTATION_LANG = 'en-US'
+
 interface Props {
   config: ConfigResponse | null
   busy: boolean
-  onSubmit: (text: string, source: InputSource, address: string | null, lang: string) => void
+  /**
+   * Seeds the fields once, at mount -- for a query that arrived in the URL from
+   * a demo link or a shared permalink, so it can be edited and re-asked rather
+   * than retyped. Later changes are ignored on purpose: after mount the fields
+   * belong to whoever is typing in them. An example chip, which is an explicit
+   * request to replace what is in the box, remounts this to reseed it.
+   */
+  initialText?: string
+  initialAddress?: string
+  onSubmit: (text: string, source: InputSource, address: string | null, lang: string | null) => void
 }
 
 /**
  * Text area and mic side by side — never mic-only.
  *
  * The mic is shown only when voice_mode allows it AND the browser supports
- * SpeechRecognition (state 6: never block on voice). The language picker appears
- * only for webspeech, because Web Speech cannot auto-detect the spoken language
- * while Vapi's transcriber can.
+ * SpeechRecognition (state 6: never block on voice).
  */
-export function AskInput({ config, busy, onSubmit }: Props) {
-  const [text, setText] = useState('')
-  const [address, setAddress] = useState('')
-  const [lang, setLang] = useState('en-US')
+export function AskInput({ config, busy, initialText, initialAddress, onSubmit }: Props) {
+  const [text, setText] = useState(initialText ?? '')
+  const [address, setAddress] = useState(initialAddress ?? '')
   const [listening, setListening] = useState(false)
   const [interim, setInterim] = useState('')
   const [voiceError, setVoiceError] = useState<string | null>(null)
@@ -30,13 +47,7 @@ export function AskInput({ config, busy, onSubmit }: Props) {
   // The mic renders only when dictation will actually work. A mic that appears
   // and then explains in an error box that it is not wired up is worse than no
   // mic at all -- especially on stage.
-  const canDictate = voiceMode === 'webspeech' && isRecognitionSupported()
-  const showMic = canDictate
-  const showLangPicker = canDictate
-
-  useEffect(() => {
-    if (config?.languages?.length) setLang(config.languages[0].tag)
-  }, [config])
+  const showMic = voiceMode === 'webspeech' && isRecognitionSupported()
 
   useEffect(() => () => session.current?.stop(), [])
 
@@ -65,7 +76,7 @@ export function AskInput({ config, busy, onSubmit }: Props) {
     }
     setVoiceError(null)
     setInterim('')
-    const started = startDictation(lang, {
+    const started = startDictation(DICTATION_LANG, {
       onInterim: (t) => setInterim(t),
       onFinal: (t) => setText(t),
       onError: (message) => {
@@ -89,7 +100,9 @@ export function AskInput({ config, busy, onSubmit }: Props) {
     const value = text.trim()
     if (!value || busy) return
     session.current?.stop()
-    onSubmit(value, listening ? 'voice' : 'text', address.trim() || null, lang)
+    // No language is sent: the backend detects it from the text, which is more
+    // reliable than a picker the person may never have touched.
+    onSubmit(value, listening ? 'voice' : 'text', address.trim() || null, null)
   }
 
   return (
@@ -129,21 +142,6 @@ export function AskInput({ config, busy, onSubmit }: Props) {
                 />
               </svg>
             </button>
-          )}
-
-          {showLangPicker && config && (
-            <select
-              value={lang}
-              onChange={(e) => setLang(e.target.value)}
-              aria-label="Spoken language"
-              disabled={busy}
-            >
-              {config.languages.map((l) => (
-                <option key={l.tag} value={l.tag}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
           )}
 
           <input

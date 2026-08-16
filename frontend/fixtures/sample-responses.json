@@ -1,5 +1,5 @@
 {
-  "_README": "Real forecast numbers, pulled from the 22.1M-row cube. The `advice` prose is illustrative -- the live API generates it per request, in the caller's language. Build against these shapes; they match app/models.py exactly.",
+  "_README": "Real forecast numbers, pulled from the 22.1M-row cube. The `advice` prose is illustrative -- the live API generates it per request, in the caller's language. Build against these shapes; they match app/models.py exactly. `form_fields` is copied verbatim from backend/data/reference/formmap.json, the same map /api/ask serves; Overflowing Recycling Baskets is genuinely absent from it, so that fixture carries [] and the panel hides.",
   "high_confidence": {
     "intake": {
       "complaint_type": "HEAT/HOT WATER",
@@ -30,7 +30,7 @@
           "outcome": "NO_ACCESS",
           "share": 0.08949713558243157,
           "count": 703,
-          "median_days_to_close": 2.0
+          "median_days_to_close": 2
         },
         {
           "outcome": "NO_OUTCOME_GIVEN",
@@ -77,7 +77,63 @@
       "caveat": null
     },
     "community_board": "07 BRONX",
-    "location_exact": true
+    "location_exact": true,
+    "form_fields": [
+      {
+        "column": "descriptor",
+        "question": "What kind of problem is it?",
+        "always": true,
+        "fill_rate": 1,
+        "options": [
+          {
+            "value": "ENTIRE BUILDING",
+            "share": 0.681
+          },
+          {
+            "value": "APARTMENT ONLY",
+            "share": 0.319
+          }
+        ]
+      },
+      {
+        "column": "descriptor_2",
+        "question": "Which part of it?",
+        "always": true,
+        "fill_rate": 1,
+        "options": [
+          {
+            "value": "NO HEAT",
+            "share": 0.467
+          },
+          {
+            "value": "NO HOT WATER",
+            "share": 0.298
+          },
+          {
+            "value": "NO HEAT AND NO HOT WATER",
+            "share": 0.231
+          }
+        ]
+      },
+      {
+        "column": "location_type",
+        "question": "Where is it?",
+        "always": true,
+        "fill_rate": 1
+      },
+      {
+        "column": "address_type",
+        "question": "How will you identify the location?",
+        "always": true,
+        "fill_rate": 1
+      },
+      {
+        "column": "incident_address",
+        "question": "The street address",
+        "always": true,
+        "fill_rate": 1
+      }
+    ]
   },
   "clarifying_question": {
     "intake": {
@@ -91,7 +147,57 @@
     "forecast": null,
     "advice": null,
     "community_board": null,
-    "location_exact": false
+    "location_exact": false,
+    "form_fields": [
+      {
+        "column": "descriptor",
+        "question": "What kind of problem is it?",
+        "always": true,
+        "fill_rate": 1,
+        "options": [
+          {
+            "value": "Banging/Pounding",
+            "share": 0.47
+          },
+          {
+            "value": "Loud Music/Party",
+            "share": 0.393
+          },
+          {
+            "value": "Loud Talking",
+            "share": 0.107
+          },
+          {
+            "value": "Loud Television",
+            "share": 0.029
+          }
+        ]
+      },
+      {
+        "column": "location_type",
+        "question": "Where is it?",
+        "always": true,
+        "fill_rate": 1
+      },
+      {
+        "column": "address_type",
+        "question": "How will you identify the location?",
+        "always": true,
+        "fill_rate": 1
+      },
+      {
+        "column": "incident_address",
+        "question": "The street address",
+        "always": true,
+        "fill_rate": 1
+      },
+      {
+        "column": "cross_street_1",
+        "question": "The nearest cross street",
+        "always": true,
+        "fill_rate": 0.999
+      }
+    ]
   },
   "low_confidence": {
     "intake": {
@@ -135,7 +241,8 @@
       "caveat": "Only 20 similar complaints are on record for this, so treat these numbers as a rough direction rather than a prediction."
     },
     "community_board": "05 MANHATTAN",
-    "location_exact": true
+    "location_exact": true,
+    "form_fields": []
   },
   "citywide_approx_location": {
     "intake": {
@@ -155,19 +262,19 @@
           "outcome": "ACTION_TAKEN",
           "share": 0.44515154783734223,
           "count": 8254,
-          "median_days_to_close": 1.0
+          "median_days_to_close": 1
         },
         {
           "outcome": "NOTHING_FOUND",
           "share": 0.4330169345270197,
           "count": 8029,
-          "median_days_to_close": 1.0
+          "median_days_to_close": 1
         },
         {
           "outcome": "NO_ACTION_NEEDED",
           "share": 0.045086829899687195,
           "count": 836,
-          "median_days_to_close": 1.0
+          "median_days_to_close": 1
         },
         {
           "outcome": "REFERRED",
@@ -208,6 +315,104 @@
       "caveat": null
     },
     "community_board": null,
-    "location_exact": false
+    "location_exact": false,
+    "form_fields": [
+      {
+        "column": "descriptor",
+        "question": "What kind of problem is it?",
+        "always": true,
+        "fill_rate": 1,
+        "options": [
+          {
+            "value": "Trash",
+            "share": 0.895
+          },
+          {
+            "value": "Dog Waste",
+            "share": 0.065
+          },
+          {
+            "value": "Dirt or Gravel",
+            "share": 0.015
+          }
+        ]
+      },
+      {
+        "column": "descriptor_2",
+        "question": "Which part of it?",
+        "always": true,
+        "fill_rate": 0.961,
+        "options": [
+          {
+            "value": "Littering",
+            "share": 0.576
+          },
+          {
+            "value": "Not Cleaned by Property Owner",
+            "share": 0.397
+          },
+          {
+            "value": "Not Picked Up by Dog Owner",
+            "share": 0.027
+          }
+        ]
+      },
+      {
+        "column": "location_type",
+        "question": "Where is it?",
+        "always": true,
+        "fill_rate": 1,
+        "options": [
+          {
+            "value": "Sidewalk",
+            "share": 0.822
+          },
+          {
+            "value": "Yard",
+            "share": 0.072
+          },
+          {
+            "value": "Street",
+            "share": 0.071
+          },
+          {
+            "value": "Gutter",
+            "share": 0.021
+          },
+          {
+            "value": "Alley",
+            "share": 0.011
+          }
+        ]
+      },
+      {
+        "column": "address_type",
+        "question": "How will you identify the location?",
+        "always": true,
+        "fill_rate": 1,
+        "options": [
+          {
+            "value": "ADDRESS",
+            "share": 0.936
+          },
+          {
+            "value": "INTERSECTION",
+            "share": 0.057
+          }
+        ]
+      },
+      {
+        "column": "incident_address",
+        "question": "The street address",
+        "always": true,
+        "fill_rate": 1
+      },
+      {
+        "column": "cross_street_1",
+        "question": "The nearest cross street",
+        "always": true,
+        "fill_rate": 0.999
+      }
+    ]
   }
 }

@@ -78,16 +78,12 @@ export function CloseTheLoop({ draftText, forecast }: Props) {
         <div className="loop-confirm">
           <div className="loop-confirm-head">We&apos;ll check back on {reminderSet}.</div>
           <div className="loop-confirm-body">
-            That&apos;s day {days} — the median time for a {forecast.complaint_type} complaint that
-            actually gets addressed to close. If yours is still open past then, it is already an
-            outlier, and that is worth knowing.
+            Day {days} — the median close time for one that actually gets addressed. Still open
+            past then and yours is already an outlier.
           </div>
         </div>
       ) : (
-        <div className="loop-hint">
-          Complaints like this that get fixed close in about {days} days. Set a reminder and you
-          will know whether yours is one of them.
-        </div>
+        <div className="loop-hint">Ones that get fixed close in about {days} days.</div>
       )}
     </div>
   )

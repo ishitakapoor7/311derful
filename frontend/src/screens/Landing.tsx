@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ExploreResponse, ExploreRow } from '../types/api'
 import { getExplore } from '../api/client'
 import { navigate } from '../lib/router'
-import { count, pct, pctShort } from '../lib/format'
+import { asFraction, count, pct, pctShort } from '../lib/format'
 import { outcomeLabel } from '../lib/outcomes'
 import {
   CLASSIFIER_COVERAGE,
@@ -16,10 +16,13 @@ import { CityMap } from '../components/CityMap'
 
 /**
  * One screen. Its only job is to make someone believe there is a real finding
- * here before they type anything -- so the hero stat is not written into this
- * file. It comes from /api/explore, the same query the Explore table runs, and
- * moves when the ingest does. `constants.ts` holds the last measured figures and
- * carries the page until the call lands (or if it never does).
+ * here before they type anything -- so the intake field lives on the Ask screen,
+ * not here, and this page carries the argument for going there.
+ *
+ * The hero stat is not written into this file. It comes from /api/explore, the
+ * same query the Explore table runs, and moves when the ingest does.
+ * `constants.ts` holds the last measured figures and carries the page until the
+ * call lands (or if it never does).
  */
 
 /**
@@ -56,33 +59,34 @@ export function Landing() {
     <div className="lp">
       <section className="lp-hero">
         <div className="wrap lp-hero-in">
-          {/* Each column is one grid item. Letting the six blocks be grid items
-              in their own right makes the taller column stretch the other's
-              rows, which opens a hole the height of the map between the
-              headline and the copy. */}
+          {/* Each column is one grid item. Letting the blocks be grid items in
+              their own right makes the taller column stretch the other's rows,
+              which opens a hole the height of the map between the headline and
+              the copy. */}
           <div className="lp-left">
-            <p className="lp-eyebrow">Service_outcomes — not complaint_volume</p>
+            <p className="lp-eyebrow">FREE · NO SIGN-IN · ANY LANGUAGE</p>
 
             <h1 className="lp-headline">
-              Fix your city <em>scientifically.</em>
+              Before you file a 311 complaint, see <em>what usually happens</em> to it.
             </h1>
 
             <p className="lede">
-              Describe a problem in any language. Find out what actually happens to complaints like
-              yours — what changes the odds, and a draft ready to submit.
+              Describe the problem in your own words — any language. You'll get the real odds for
+              your area, why complaints like yours usually fail, and a draft ready to submit.
             </p>
 
             <div className="lp-actions">
               <button className="btn btn-primary" onClick={() => navigate('ask')}>
-                Run_forecast
+                Run forecast
               </button>
               <span className="lp-or">
                 Or browse{' '}
                 <button className="linklike" onClick={() => navigate('explore')}>
-                  Citywide_data
+                  the citywide data
                 </button>
               </span>
             </div>
+
           </div>
 
           <aside className="lp-right">
@@ -99,7 +103,7 @@ export function Landing() {
                 <span className="lp-tel-key">WINDOW:</span>
                 <span className="lp-tel-val">{DATA_WINDOW}</span>
               </div>
-              <div className="lp-tel-foot">CLASSIFIER_COVERAGE {coverage}</div>
+              <div className="lp-tel-foot">CLASSIFIER COVERAGE {coverage}</div>
             </div>
           </aside>
         </div>
@@ -108,13 +112,13 @@ export function Landing() {
       <div className="wrap lp-below stack">
         {/* ---- the finding ---- */}
         <section>
-          <p className="label">The_finding</p>
+          <p className="label">Service outcomes — not complaint volume</p>
 
           <div className="lp-finding">
             <p className="lp-finding-claim">
               <span className="lp-finding-n">{pctShort(hero.resolved_share)}</span> of{' '}
               {hero.agency} {hero.complaint_type.toLowerCase()} complaints end with the problem
-              addressed. Three of every four do not.
+              addressed — {asFraction(hero.resolved_share)}. The rest are closed anyway.
             </p>
 
             {/* The number restated as the gap it describes. Everything below
@@ -155,47 +159,81 @@ export function Landing() {
           </p>
         </section>
 
-        {/* ---- how it works ---- */}
+        {/* ---- what comes back ---- */}
         <section>
-          <p className="label">How_it_works</p>
+          <p className="label">What you get</p>
           <ol className="steps">
             <li>
               <sup>01</sup>
               <span>
-                <strong>Describe it</strong>
-                <em>Speak or type the problem in your own words, in any language.</em>
+                <strong>The odds for your area</strong>
+                <em>
+                  The full outcome breakdown for your complaint type in your community district,
+                  with the sample size and a confidence tier on every figure.
+                </em>
               </span>
             </li>
             <li>
               <sup>02</sup>
               <span>
-                <strong>We check {millions}M records</strong>
+                <strong>Why complaints like yours fail</strong>
                 <em>
-                  Your words are mapped onto the 311 taxonomy, then matched against classified
-                  outcomes for your area.
+                  The failure mode that closes them — nobody could get access, nothing was found,
+                  filed as a duplicate — and what changes those odds.
                 </em>
               </span>
             </li>
             <li>
               <sup>03</sup>
               <span>
-                <strong>You get the odds and a draft</strong>
+                <strong>A draft ready to submit</strong>
                 <em>
-                  The outcome distribution, what makes complaints like yours fail, and a complaint
-                  you can submit.
+                  Written in your language, in 311's own vocabulary, answering the failure mode
+                  before it happens. You file it — we can't.
                 </em>
               </span>
             </li>
           </ol>
         </section>
 
+        {/* ---- why the number can be trusted ---- */}
+        <section>
+          <p className="label">Why trust the number</p>
+          <dl className="lp-why">
+            <div className="lp-why-row">
+              <dt>NO MODEL NUMBERS</dt>
+              <dd>
+                The model has two jobs: mapping your words onto the 311 taxonomy, and phrasing the
+                answer in your language. Every statistic is a precomputed aggregate over{' '}
+                {millions}M records, interpolated in as a finished figure.
+              </dd>
+            </div>
+            <div className="lp-why-row">
+              <dt>THIN SAMPLES LABELLED</dt>
+              <dd>
+                Eight records is noise. A forecast widens from your district to your borough to
+                citywide until it has enough data, and every answer reports the sample size, the
+                level it reached, and a confidence tier.
+              </dd>
+            </div>
+            <div className="lp-why-row">
+              <dt>COVERAGE REPORTED</dt>
+              <dd>
+                {coverage} of records classify. The rest are counted and shown, never quietly folded
+                into an outcome — and coverage is reported per year, because one average can hide a
+                collapse on retired templates.
+              </dd>
+            </div>
+          </dl>
+        </section>
+
         <div className="cta-banner">
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <button className="btn btn-primary" onClick={() => navigate('ask')}>
-              Run_forecast
+              Check the odds
             </button>
             <button className="btn btn-ghost" onClick={() => navigate('explore')}>
-              Citywide_data
+              See the citywide numbers
             </button>
           </div>
 
@@ -203,7 +241,6 @@ export function Landing() {
             {count(totalRecords)} complaints · {DATA_RANGE} · NYC Open Data · updated daily
           </div>
         </div>
-
       </div>
     </div>
   )

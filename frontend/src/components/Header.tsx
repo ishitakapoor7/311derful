@@ -19,13 +19,13 @@ export function Header({ route }: { route: Route }) {
               numbers that never change. Absent entirely when the API is live. */}
           {USE_MOCK && (
             <span className="mode-badge" title="Serving the committed fixtures, not the API">
-              Fixture_mode
+              Fixture mode
             </span>
           )}
 
           <nav className="nav">
             <button onClick={() => navigate('explore')} aria-current={route === 'explore'}>
-              Citywide_data
+              Citywide data
             </button>
           </nav>
 
@@ -39,7 +39,7 @@ export function Header({ route }: { route: Route }) {
             onClick={() => navigate('ask')}
             aria-current={route === 'ask'}
           >
-            Run_forecast
+            Run forecast
           </button>
         </div>
       </div>

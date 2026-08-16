@@ -120,8 +120,10 @@ button {
 
 /* ---------- type ---------- */
 
-/* Section labels are machine-voice: mono, snake_case, no shouting. The
-   underscores in the copy carry the register, so no text-transform here. */
+/* Section labels are machine-voice: mono, small, no shouting. The typeface and
+   the letter-spacing carry the register -- these used to be snake_case as well,
+   which read as a variable name rather than a heading. No text-transform: the
+   copy is written in the case it should render in. */
 .label {
   font-family: var(--mono);
   font-size: 11.5px;
@@ -474,9 +476,10 @@ button {
 }
 
 /* ---------- landing hero ----------
-   Headline spanning the full measure, the copy column beneath it on the left,
-   and the measured case file offset to the right. The rail and the skyline are
-   the only decorative elements, and the skyline is drawn from real shares. */
+   The argument on the left -- headline, lede, the one action, and a row of
+   example complaints for anyone who would rather not phrase their own -- with
+   the locator map and the instrument readout offset to the right. The map is the
+   only decorative element, and it is drawn from the real district boundaries. */
 
 .lp-hero {
   position: relative;
@@ -528,7 +531,7 @@ button {
   row-gap: 32px;
   align-items: center;
   padding-top: 56px;
-  padding-bottom: 72px;
+  padding-bottom: 68px;
 }
 
 .lp-left {
@@ -547,13 +550,13 @@ button {
 }
 
 .lp-headline {
-  /* Sized against the left column rather than the viewport, so "scientifically."
-     stays on one line beside the map instead of breaking mid-word. */
-  font-size: clamp(38px, 6.4vw, 68px);
+  /* Sized against the left column rather than the viewport, so it wraps beside
+     the map instead of breaking mid-word. */
+  font-size: clamp(34px, 5.2vw, 56px);
   font-weight: 700;
-  letter-spacing: -0.04em;
-  max-width: 14ch;
-  margin-bottom: 22px;
+  letter-spacing: -0.038em;
+  max-width: 18ch;
+  margin-bottom: 20px;
 }
 
 /* The one accented phrase in the headline — the claim the page is making. */
@@ -571,7 +574,7 @@ button {
   gap: 16px;
   flex-wrap: wrap;
   align-items: center;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .lp-or {
@@ -692,6 +695,41 @@ button {
   padding: 1px 5px;
 }
 
+/* ---------- landing "why trust it" ----------
+   Mono key, prose answer. The three objections a sceptic raises in order --
+   is it the model making these up, is the sample real, what got left out --
+   answered in the same register the telemetry readout speaks in. */
+
+.lp-why {
+  margin: 0;
+}
+
+.lp-why-row {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 4px 20px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.lp-why-row:first-child {
+  border-top: 1px solid var(--rule);
+}
+
+.lp-why dt {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  padding-top: 3px;
+}
+
+.lp-why dd {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
 
 @media (max-width: 980px) {
   .lp-hero-in {
@@ -708,6 +746,10 @@ button {
   /* Stacked, the map must not push the readout off the first screen. */
   .citymap {
     max-width: 320px;
+  }
+
+  .lp-why-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -862,8 +904,57 @@ button {
   background: var(--paper-2);
 }
 
-.field-bar input[type='text'],
-.field-bar select {
+/* ---------- examples ----------
+   One tap into a real forecast, directly under the box, for everyone who will
+   not type into a field they have never used. Ruled rather than filled: these
+   are suggestions, and four solid buttons would out-shout Check the odds. */
+
+.examples {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.examples-key {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.example {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  transition:
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.example:hover {
+  border-color: var(--rule-2);
+  color: var(--ink);
+}
+
+/* The one promise the product must never overstate, said beside the field it
+   applies to rather than in the small print under a result. */
+.intake-note {
+  margin: 14px 0 0;
+  max-width: 56ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  border-left: 2px solid var(--rule-2);
+  padding-left: 12px;
+}
+
+.field-bar input[type='text'] {
   font: inherit;
   font-size: 13px;
   padding: 7px 9px;
@@ -1211,6 +1302,204 @@ button {
   text-transform: uppercase;
   color: var(--ink-3);
   margin-top: 5px;
+}
+
+/* ---------- disclosure ----------
+   Supporting detail, folded until asked for. Deliberately quiet: a marker, a
+   mono line, no box. It should read as a way further in, not as another card
+   competing with the result. */
+
+.disclosure {
+  border-top: 1px solid var(--rule);
+}
+
+/* The last bar already draws a rule, so the disclosure under it must not draw a
+   second one directly on top. */
+.bars + .disclosure {
+  border-top: 0;
+}
+
+.disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.12s ease;
+}
+
+.disclosure > summary:hover {
+  color: var(--ink);
+}
+
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The marker is drawn rather than inherited so it is identical across browsers
+   and rotates on open. */
+.disclosure > summary::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.15s ease;
+}
+
+.disclosure[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.disclosure > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.disclosure-body {
+  padding: 2px 0 18px;
+}
+
+/* Bars carried inside a disclosure keep their own top rule from the list above,
+   so they do not need a second one. */
+.disclosure-body .bars {
+  border-top: 0;
+}
+
+/* The one-line finding above the chart — what used to be its own callout. */
+.bars-lead {
+  margin: 0 0 16px;
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 62ch;
+}
+
+.bars-lead strong {
+  color: var(--failure-ink);
+}
+
+.report-more {
+  margin-top: 30px;
+}
+
+/* ---------- form fields ----------
+   The recovered intake questions, sitting directly above the draft. Numbered
+   and ruled like the tips list so it reads as another measured thing, and the
+   option values are in the mono voice because they are the city's words, not
+   ours. */
+
+.ff-basis {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 0 0 14px;
+}
+
+.ff-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.ff-row {
+  border-bottom: 1px solid var(--rule);
+  padding: 14px 0;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.ff-n {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-3);
+  padding-top: 2px;
+}
+
+.ff-body {
+  min-width: 0;
+}
+
+.ff-q {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Conditional on an earlier answer — flagged, never presented as required. */
+.ff-may {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  padding: 1px 5px;
+  margin-left: 8px;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
+.ff-when {
+  margin: 5px 0 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.ff-options {
+  list-style: none;
+  margin: 9px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Ruled, not filled, and never coloured by share: these are the answers people
+   give, and a colour scale would read as one of them being the right one. */
+.ff-option {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  background: var(--paper-2);
+  padding: 4px 9px;
+}
+
+.ff-option-v {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.ff-option-s {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.ff-freetext {
+  margin: 7px 0 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.ff-foot {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-3);
+  max-width: 68ch;
 }
 
 /* ---------- draft ---------- */

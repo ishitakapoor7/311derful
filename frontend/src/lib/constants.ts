@@ -14,10 +14,12 @@ export const TOTAL_RECORDS = 22_145_244
 export const DATA_RANGE = '2020–2026'
 
 /**
- * Shown in the language picker when the backend has not told us what it
- * supports -- Web Speech needs a BCP-47 tag and cannot detect one itself, so an
- * unreachable /api/config must not leave the picker empty. The live list from
- * the backend replaces this whenever the call lands.
+ * What the UI assumes the backend supports when /api/config cannot be reached.
+ *
+ * Nothing renders these any more -- there is no language picker, dictation runs
+ * in one fixed locale, and the backend detects the language from the text. They
+ * stay because `ConfigResponse.languages` is part of the API contract and the
+ * offline fallback has to satisfy it.
  */
 export const FALLBACK_LANGUAGES = [
   { tag: 'en-US', label: 'English' },
@@ -31,7 +33,7 @@ export const FALLBACK_LANGUAGES = [
 ]
 
 /** The same window in the machine voice the landing telemetry block speaks in. */
-export const DATA_WINDOW = 'JAN_2020 — AUG_2026'
+export const DATA_WINDOW = 'JAN 2020 — AUG 2026'
 
 /**
  * VERIFIED: reported per year, never as a single average, because one number
