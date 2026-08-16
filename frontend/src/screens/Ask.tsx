@@ -346,7 +346,11 @@ export function Ask() {
               goes. One input for the whole conversation: the first complaint and
               every follow-up are typed or spoken into the same box. */}
           <div className="composer">
-            {turns.length === 0 && <p className="label">Describe the problem</p>}
+            {/* No heading above these: the placeholder in the box says what to
+                do, and saying it twice in two type styles was the denser half of
+                the problem. Only before the first turn -- once there is a
+                thread, the chips would be offering to throw it away. */}
+            {turns.length === 0 && <ExampleChips disabled={busy} onPick={handleExample} />}
 
             <AskInput
               key={seed.nonce}
@@ -357,10 +361,6 @@ export function Ask() {
               initialAddress={seed.address}
               onSubmit={handleSubmit}
             />
-
-            {/* Only before the first turn: once there is a thread, the chips
-                would be offering to throw it away. */}
-            {turns.length === 0 && <ExampleChips disabled={busy} onPick={handleExample} />}
           </div>
         </div>
 

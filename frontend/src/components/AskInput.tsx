@@ -172,7 +172,9 @@ export function AskInput({
           placeholder={
             awaitingAnswer
               ? 'Answer in any language — speak it or type it'
-              : 'Describe the problem in your own words — any language. e.g. my radiator has been cold for three days'
+              : // No worked example here any more: the chips above the box are
+                // the examples, and they run rather than just illustrate.
+                'Describe the problem in any language'
           }
           aria-label={awaitingAnswer ? 'Answer the question' : 'Describe the problem'}
           disabled={busy}

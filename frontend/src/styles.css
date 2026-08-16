@@ -931,12 +931,13 @@ button {
    not type into a field they have never used. Ruled rather than filled: these
    are suggestions, and four solid buttons would out-shout Check the odds. */
 
+/* Sits above the field now, so the space belongs underneath it. */
 .examples {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 12px;
+  margin-bottom: 12px;
 }
 
 .examples-key {
