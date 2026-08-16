@@ -18,6 +18,7 @@ import {
   readCachedResult,
 } from '../lib/resultCache'
 import { AskInput } from '../components/AskInput'
+import { ExampleChips } from '../components/ExampleChips'
 import { ReportView } from '../components/ReportView'
 import { ChatView, type Turn } from '../components/ChatView'
 import { HistorySidebar } from '../components/HistorySidebar'
@@ -45,14 +46,12 @@ function hashParams(): URLSearchParams {
 }
 
 /**
- * The query a URL can arrive carrying, from three places: `?demo=` for the
- * rehearsed pitch, and `?q=` from either the landing hero or a shared permalink.
+ * The query a URL can arrive carrying: `?demo=` for the rehearsed pitch, and
+ * `?q=` from a ShareResult permalink.
  *
- * The hero also sends `addr`/`lang`/`src`, because it renders the same AskInput
- * this screen does and would otherwise drop the location someone just typed. A
- * ShareResult permalink deliberately carries none of them -- the geocoder takes
- * "lat,lon" or a ZIP, not a community board -- so a shared link answers citywide
- * and the scope note under the result says so.
+ * A permalink carries the complaint text and nothing else -- no board, because
+ * the geocoder takes "lat,lon" or a ZIP and not a community district -- so a
+ * shared link answers citywide and the scope note under the result says so.
  */
 function urlQuery(): Omit<AskRequest, 'session_id'> | null {
   const params = hashParams()
@@ -62,12 +61,7 @@ function urlQuery(): Omit<AskRequest, 'session_id'> | null {
 
   const text = params.get('q')?.trim()
   if (!text) return null
-  return {
-    text,
-    source: params.get('src') === 'voice' ? 'voice' : 'text',
-    address: params.get('addr')?.trim() || null,
-    lang: params.get('lang') || null,
-  }
+  return { text, source: 'text', address: null, lang: null }
 }
 
 /** Transcript keys only — never sent anywhere, never used as an entry id. */
@@ -93,10 +87,14 @@ export function Ask() {
   const [stored, setStored] = useState<HistoryEntry | null>(null)
 
   const sessionId = getSessionId()
-  // Read once, at mount: whatever the URL arrived with also seeds the textarea,
-  // so an auto-fired query is visible and editable rather than answered by an
-  // apparently empty box.
-  const [initialText] = useState(() => urlQuery()?.text ?? '')
+  // What the input mounts with. Seeded from the URL so an auto-fired query is
+  // visible and editable rather than answered by an apparently empty box, then
+  // replaced whenever an example chip is used. `nonce` keys the input: the
+  // fields are its own state after mount, so reseeding them means remounting.
+  const [seed, setSeed] = useState(() => {
+    const query = urlQuery()
+    return { text: query?.text ?? '', address: query?.address ?? '', nonce: 0 }
+  })
 
   const refreshHistory = useCallback(async (): Promise<HistoryEntry[]> => {
     try {
@@ -173,6 +171,15 @@ export function Ask() {
     void run({ text, source, address, lang, session_id: sessionId })
   }
 
+  // A chip is an explicit request to ask this instead, so it overwrites the box
+  // rather than appending, and runs without a second click -- the whole point is
+  // that it takes one tap to see a real forecast.
+  function handleExample(text: string, address: string | null) {
+    setSeed((s) => ({ text, address: address ?? '', nonce: s.nonce + 1 }))
+    setResponse(null)
+    void run({ text, source: 'text', address, lang: null, session_id: sessionId })
+  }
+
   // State 1: resubmit with the clarifying answer appended rather than replacing it.
   function handleClarify(answer: string) {
     if (!lastRequest) return
@@ -235,11 +242,23 @@ export function Ask() {
           <div>
             <p className="label">Describe_the_problem</p>
             <AskInput
+              key={seed.nonce}
               config={config}
               busy={busy}
-              initialText={initialText}
+              initialText={seed.text}
+              initialAddress={seed.address}
               onSubmit={handleSubmit}
             />
+
+            <ExampleChips disabled={busy} onPick={handleExample} />
+
+            {/* Said beside the field, before the tool is used rather than in the
+                small print under a result: NYC has no public write API for 311,
+                and what the product produces is a draft. */}
+            <p className="intake-note">
+              We can't file it for you — NYC has no public write API for 311. What you get is a
+              draft to submit yourself.
+            </p>
           </div>
 
           {/* Fail loudly and early rather than at the first /api/ask call. */}

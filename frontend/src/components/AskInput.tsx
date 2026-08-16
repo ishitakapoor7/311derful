@@ -17,12 +17,14 @@ interface Props {
   config: ConfigResponse | null
   busy: boolean
   /**
-   * Seeds the box once, at mount -- for a query that arrived in the URL from the
-   * landing hero, a demo link or a shared permalink, so it can be edited and
-   * re-asked rather than retyped. Later changes are ignored on purpose: after
-   * mount the textarea belongs to whoever is typing in it.
+   * Seeds the fields once, at mount -- for a query that arrived in the URL from
+   * a demo link or a shared permalink, so it can be edited and re-asked rather
+   * than retyped. Later changes are ignored on purpose: after mount the fields
+   * belong to whoever is typing in them. An example chip, which is an explicit
+   * request to replace what is in the box, remounts this to reseed it.
    */
   initialText?: string
+  initialAddress?: string
   onSubmit: (text: string, source: InputSource, address: string | null, lang: string | null) => void
 }
 
@@ -32,9 +34,9 @@ interface Props {
  * The mic is shown only when voice_mode allows it AND the browser supports
  * SpeechRecognition (state 6: never block on voice).
  */
-export function AskInput({ config, busy, initialText, onSubmit }: Props) {
+export function AskInput({ config, busy, initialText, initialAddress, onSubmit }: Props) {
   const [text, setText] = useState(initialText ?? '')
-  const [address, setAddress] = useState('')
+  const [address, setAddress] = useState(initialAddress ?? '')
   const [listening, setListening] = useState(false)
   const [interim, setInterim] = useState('')
   const [voiceError, setVoiceError] = useState<string | null>(null)

@@ -37,40 +37,6 @@ function heroRow(rows: ExploreRow[]): ExploreRow {
   return common.reduce((worst, r) => (r.resolved_share < worst.resolved_share ? r : worst))
 }
 
-/**
- * One tap into a real forecast, for the large majority of people who will not
- * type anything into a box they have never used before. They land on the Ask
- * screen with the query already running.
- *
- * These are phrased the way somebody actually describes the problem, not the way
- * 311 files it -- mapping "my radiator has been cold" onto HEAT/HOT WATER →
- * ENTIRE BUILDING is the thing being demonstrated. One is in Spanish because a
- * chip in another language proves the multilingual claim faster than a sentence
- * saying so, and it is the shortest path to a non-English demo on stage.
- */
-const EXAMPLES: { label: string; text: string; address: string | null }[] = [
-  {
-    label: 'Cold radiator',
-    text: 'my radiator has been cold for three days',
-    address: '10457',
-  },
-  {
-    label: 'Ceiling leak',
-    text: 'water is leaking from my bathroom ceiling',
-    address: null,
-  },
-  {
-    label: 'Basura en la acera',
-    text: 'hay basura acumulada en la acera frente a mi edificio',
-    address: null,
-  },
-  {
-    label: 'Blocked hydrant',
-    text: 'a car has been parked in front of the fire hydrant on my block for days',
-    address: null,
-  },
-]
-
 export function Landing() {
   const [data, setData] = useState<ExploreResponse | null>(null)
 
@@ -88,17 +54,6 @@ export function Landing() {
   // Coverage is a live figure when the API answers and a per-year range when it
   // does not. The range is never presented as a single average either way.
   const coverage = data ? pct(data.classified_share, 1) : CLASSIFIER_COVERAGE
-
-  /**
-   * The landing page never runs a forecast itself -- it hands the query to the
-   * Ask screen, which owns the intake field, history, the result views and every
-   * failure state, and auto-fires whatever arrives in the URL.
-   */
-  function runExample(text: string, address: string | null) {
-    const params = new URLSearchParams({ q: text })
-    if (address) params.set('addr', address)
-    navigate('ask', params.toString())
-  }
 
   return (
     <div className="lp">
@@ -132,32 +87,6 @@ export function Landing() {
               </span>
             </div>
 
-            {/* Zero-typing entry. Also what keeps the demo alive when the mic,
-                the wifi or a nervous hand misbehaves. */}
-            <div className="lp-examples" role="group" aria-label="Example complaints">
-              <span className="lp-examples-key">TRY:</span>
-              {EXAMPLES.map((e) => (
-                <button
-                  key={e.label}
-                  className="lp-example"
-                  /* The short label is the accessible name; the sentence that
-                     will actually be submitted is on hover, so nobody is
-                     surprised by what the chip asked on their behalf. */
-                  title={e.text}
-                  onClick={() => runExample(e.text, e.address)}
-                >
-                  {e.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Said before the tool is used, not in the small print under a
-                result: NYC has no public write API for 311, and the product's
-                output is a draft. */}
-            <p className="lp-hero-note">
-              We can't file it for you — NYC has no public write API for 311. What you get is a
-              draft to submit yourself.
-            </p>
           </div>
 
           <aside className="lp-right">

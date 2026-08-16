@@ -14,14 +14,8 @@ function parse(): Route {
   return (ROUTES as string[]).includes(raw) ? (raw as Route) : 'landing'
 }
 
-/**
- * `query` is an already-encoded query string (no leading `?`). It is how the
- * landing hero hands a typed complaint to the Ask screen, and how ShareResult
- * builds a permalink -- both land as `#/ask?…` and are read back by `Ask`.
- */
-export function navigate(route: Route, query?: string): void {
-  const path = route === 'landing' ? '/' : `/${route}`
-  window.location.hash = query ? `${path}?${query}` : path
+export function navigate(route: Route): void {
+  window.location.hash = route === 'landing' ? '/' : `/${route}`
 }
 
 export function useRoute(): Route {

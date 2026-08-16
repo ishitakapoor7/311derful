@@ -581,56 +581,6 @@ button {
   color: var(--ink-3);
 }
 
-/* ---------- landing examples ----------
-   One tap into a real forecast, for everyone who will not type into a box they
-   have never used. Ruled rather than filled: these are suggestions, and four
-   solid buttons would out-shout Run forecast directly above them. */
-
-.lp-examples {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 0;
-}
-
-.lp-examples-key {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--ink-3);
-}
-
-.lp-example {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink-2);
-  background: var(--card);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-sm);
-  padding: 5px 10px;
-  transition:
-    border-color 0.12s ease,
-    color 0.12s ease;
-}
-
-.lp-example:hover {
-  border-color: var(--rule-2);
-  color: var(--ink);
-}
-
-/* The one promise the product must never overstate, said before the tool is
-   used rather than in the small print under a result. */
-.lp-hero-note {
-  margin: 20px 0 0;
-  max-width: 56ch;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-3);
-  border-left: 2px solid var(--rule-2);
-  padding-left: 12px;
-}
-
 /* ---------- landing telemetry ----------
    What was read, over what window, and how much of it could be accounted for.
    Ruled like an instrument readout rather than boxed like a card, so it reads
@@ -950,6 +900,56 @@ button {
   border-top: 1px solid var(--rule);
   padding: 10px 12px;
   background: var(--paper-2);
+}
+
+/* ---------- examples ----------
+   One tap into a real forecast, directly under the box, for everyone who will
+   not type into a field they have never used. Ruled rather than filled: these
+   are suggestions, and four solid buttons would out-shout Check the odds. */
+
+.examples {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.examples-key {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.example {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  transition:
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.example:hover {
+  border-color: var(--rule-2);
+  color: var(--ink);
+}
+
+/* The one promise the product must never overstate, said beside the field it
+   applies to rather than in the small print under a result. */
+.intake-note {
+  margin: 14px 0 0;
+  max-width: 56ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  border-left: 2px solid var(--rule-2);
+  padding-left: 12px;
 }
 
 .field-bar input[type='text'] {
