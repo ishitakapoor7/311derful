@@ -1,0 +1,213 @@
+{
+  "_README": "Real forecast numbers, pulled from the 22.1M-row cube. The `advice` prose is illustrative -- the live API generates it per request, in the caller's language. Build against these shapes; they match app/models.py exactly.",
+  "high_confidence": {
+    "intake": {
+      "complaint_type": "HEAT/HOT WATER",
+      "descriptor": "ENTIRE BUILDING",
+      "agency": "HPD",
+      "confidence": 0.94,
+      "detected_lang": "en",
+      "clarifying_question": null
+    },
+    "forecast": {
+      "complaint_type": "HEAT/HOT WATER",
+      "descriptor": "ENTIRE BUILDING",
+      "agency": "HPD",
+      "outcomes": [
+        {
+          "outcome": "VERIFIED_FIXED",
+          "share": 0.5301082113303628,
+          "count": 4164,
+          "median_days_to_close": 1.3
+        },
+        {
+          "outcome": "DUPLICATE",
+          "share": 0.233991088478676,
+          "count": 1838,
+          "median_days_to_close": 1.7
+        },
+        {
+          "outcome": "NO_ACCESS",
+          "share": 0.08949713558243157,
+          "count": 703,
+          "median_days_to_close": 2.0
+        },
+        {
+          "outcome": "NO_OUTCOME_GIVEN",
+          "share": 0.08465945257797582,
+          "count": 665,
+          "median_days_to_close": 0.4
+        },
+        {
+          "outcome": "PENDING",
+          "share": 0.025843411839592618,
+          "count": 203,
+          "median_days_to_close": null
+        },
+        {
+          "outcome": "NOTHING_FOUND",
+          "share": 0.02126034373010821,
+          "count": 167,
+          "median_days_to_close": 2.1
+        },
+        {
+          "outcome": "ACTION_TAKEN",
+          "share": 0.01464035646085296,
+          "count": 115,
+          "median_days_to_close": 2.2
+        }
+      ],
+      "resolved_share": 0.5447485677912158,
+      "sample_size": 7855,
+      "unclassified_count": 13,
+      "confidence_tier": "HIGH",
+      "geo_level": "COMMUNITY_BOARD",
+      "time_window": "RECENT",
+      "baseline_resolved_share": 0.3616582561908899
+    },
+    "advice": {
+      "narrative": "About half of heat complaints like yours in your district end with the problem confirmed fixed, better than the citywide average. But almost a quarter get closed as a duplicate of a building-wide report someone else already filed.",
+      "tips": [
+        {
+          "targets_outcome": "DUPLICATE",
+          "text": "Describe what's happening in your specific apartment, not just the building, so your complaint isn't folded into someone else's and closed with it."
+        }
+      ],
+      "draft_text": "311 complaint draft (HPD)\nCategory: HEAT/HOT WATER / ENTIRE BUILDING\n\nmy radiator has been cold for three days\n\nSubmit at portal.311.nyc.gov or by calling 311.",
+      "caveat": null
+    },
+    "community_board": "07 BRONX",
+    "location_exact": true
+  },
+  "clarifying_question": {
+    "intake": {
+      "complaint_type": "Noise - Residential",
+      "descriptor": null,
+      "agency": "NYPD",
+      "confidence": 0.38,
+      "detected_lang": "en",
+      "clarifying_question": "Is the noise coming from inside another apartment, or from the street outside?"
+    },
+    "forecast": null,
+    "advice": null,
+    "community_board": null,
+    "location_exact": false
+  },
+  "low_confidence": {
+    "intake": {
+      "complaint_type": "Overflowing Recycling Baskets",
+      "descriptor": null,
+      "agency": "DSNY",
+      "confidence": 0.91,
+      "detected_lang": "en",
+      "clarifying_question": null
+    },
+    "forecast": {
+      "complaint_type": "Overflowing Recycling Baskets",
+      "descriptor": null,
+      "agency": "DSNY",
+      "outcomes": [
+        {
+          "outcome": "NOTHING_FOUND",
+          "share": 0.5,
+          "count": 10,
+          "median_days_to_close": 1.3
+        },
+        {
+          "outcome": "ACTION_TAKEN",
+          "share": 0.5,
+          "count": 10,
+          "median_days_to_close": 1.9
+        }
+      ],
+      "resolved_share": 0.5,
+      "sample_size": 20,
+      "unclassified_count": 1,
+      "confidence_tier": "LOW",
+      "geo_level": "CITYWIDE",
+      "time_window": "FULL_HISTORY",
+      "baseline_resolved_share": null
+    },
+    "advice": {
+      "narrative": "There is very little history for this kind of complaint, so this is a rough direction rather than a forecast.",
+      "tips": [],
+      "draft_text": "311 complaint draft (DSNY)\nCategory: Overflowing Recycling Baskets\n\nThe recycling baskets on my corner are overflowing.\n\nSubmit at portal.311.nyc.gov or by calling 311.",
+      "caveat": "Only 20 similar complaints are on record for this, so treat these numbers as a rough direction rather than a prediction."
+    },
+    "community_board": "05 MANHATTAN",
+    "location_exact": true
+  },
+  "citywide_approx_location": {
+    "intake": {
+      "complaint_type": "Dirty Condition",
+      "descriptor": "Trash",
+      "agency": "DSNY",
+      "confidence": 0.94,
+      "detected_lang": "es",
+      "clarifying_question": null
+    },
+    "forecast": {
+      "complaint_type": "Dirty Condition",
+      "descriptor": "Trash",
+      "agency": "DSNY",
+      "outcomes": [
+        {
+          "outcome": "ACTION_TAKEN",
+          "share": 0.44515154783734223,
+          "count": 8254,
+          "median_days_to_close": 1.0
+        },
+        {
+          "outcome": "NOTHING_FOUND",
+          "share": 0.4330169345270197,
+          "count": 8029,
+          "median_days_to_close": 1.0
+        },
+        {
+          "outcome": "NO_ACTION_NEEDED",
+          "share": 0.045086829899687195,
+          "count": 836,
+          "median_days_to_close": 1.0
+        },
+        {
+          "outcome": "REFERRED",
+          "share": 0.03990939488728293,
+          "count": 740,
+          "median_days_to_close": 0.9
+        },
+        {
+          "outcome": "PENDING",
+          "share": 0.03457016503074102,
+          "count": 641,
+          "median_days_to_close": null
+        },
+        {
+          "outcome": "NO_OUTCOME_GIVEN",
+          "share": 0.0022651278179268686,
+          "count": 42,
+          "median_days_to_close": 0.4
+        }
+      ],
+      "resolved_share": 0.44515154783734223,
+      "sample_size": 18542,
+      "unclassified_count": 774,
+      "confidence_tier": "HIGH",
+      "geo_level": "CITYWIDE",
+      "time_window": "RECENT",
+      "baseline_resolved_share": 0.41877675638004846
+    },
+    "advice": {
+      "narrative": "La mayoria de las quejas como la suya no terminan con el problema resuelto.",
+      "tips": [
+        {
+          "targets_outcome": "NOTHING_FOUND",
+          "text": "Sea especifico sobre que vio y cuando: la ubicacion exacta y la hora del dia."
+        }
+      ],
+      "draft_text": "311 complaint draft (DSNY)\nCategory: Dirty Condition / Trash\n\nthere's trash piled up on the sidewalk\n\nSubmit at portal.311.nyc.gov or by calling 311.",
+      "caveat": null
+    },
+    "community_board": null,
+    "location_exact": false
+  }
+}
