@@ -148,6 +148,15 @@ navigator.geolocation?.getCurrentPosition(
   { timeout: 5000 }
 );
 
+// Voice state. MUST be declared before the boot block below calls the init
+// functions. Function declarations hoist, but `let` bindings sit in the
+// temporal dead zone until this line runs -- with these declared after the
+// boot block, `vapi = new Vapi(...)` threw "Cannot access 'vapi' before
+// initialization", the catch swallowed it, and the mic button was never
+// unhidden. Web Speech failed the same way, uncaught, taking loadHistory()
+// with it.
+let listening = false, recognition = null, vapi = null;
+
 // ---------------------------------------------------------------------------
 // Boot: the backend decides which voice path is live.
 // ---------------------------------------------------------------------------
@@ -171,8 +180,6 @@ loadHistory();
 // Path A — browser SpeechRecognition. No keys, no cost. Cannot detect the
 // spoken language, so the backend sends a language list and we show a picker.
 // ---------------------------------------------------------------------------
-let listening = false, recognition = null, vapi = null;
-
 function initWebSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
