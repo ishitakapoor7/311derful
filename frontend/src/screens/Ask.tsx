@@ -11,6 +11,8 @@ import {
   USE_MOCK,
 } from '../api/client'
 import { getSessionId } from '../lib/session'
+import { isRecognitionSupported } from '../lib/speech'
+import { FALLBACK_LANGUAGES } from '../lib/constants'
 import {
   cacheResult,
   clearResultCache,
@@ -84,9 +86,15 @@ export function Ask() {
       .then(setConfig)
       .catch(() =>
         // Voice is optional; a missing config must not block the text path.
+        //
+        // 'off' here would be the wrong default, though. It is the backend's
+        // way of saying "do not offer voice", and a failed call is not the
+        // backend saying anything -- while Web Speech runs entirely in the
+        // browser and needs no API at all. So an unreachable backend hides the
+        // mic only when the browser could not have done it anyway.
         setConfig({
-          voice_mode: 'off',
-          languages: [{ tag: 'en-US', label: 'English' }],
+          voice_mode: isRecognitionSupported() ? 'webspeech' : 'off',
+          languages: FALLBACK_LANGUAGES,
           llm_configured: true,
         }),
       )

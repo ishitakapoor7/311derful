@@ -13,6 +13,23 @@ export const TOTAL_RECORDS = 22_145_244
 
 export const DATA_RANGE = '2020–2026'
 
+/**
+ * Shown in the language picker when the backend has not told us what it
+ * supports -- Web Speech needs a BCP-47 tag and cannot detect one itself, so an
+ * unreachable /api/config must not leave the picker empty. The live list from
+ * the backend replaces this whenever the call lands.
+ */
+export const FALLBACK_LANGUAGES = [
+  { tag: 'en-US', label: 'English' },
+  { tag: 'es-ES', label: 'Español' },
+  { tag: 'zh-CN', label: '中文' },
+  { tag: 'bn-BD', label: 'বাংলা' },
+  { tag: 'ru-RU', label: 'Русский' },
+  { tag: 'ht-HT', label: 'Kreyòl Ayisyen' },
+  { tag: 'ar-SA', label: 'العربية' },
+  { tag: 'fr-FR', label: 'Français' },
+]
+
 /** The same window in the machine voice the landing telemetry block speaks in. */
 export const DATA_WINDOW = 'JAN_2020 — AUG_2026'
 
