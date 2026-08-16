@@ -64,7 +64,7 @@ export function Landing() {
               which opens a hole the height of the map between the headline and
               the copy. */}
           <div className="lp-left">
-            <p className="lp-eyebrow">FREE · NO_SIGN_IN · ANY_LANGUAGE</p>
+            <p className="lp-eyebrow">FREE · NO SIGN-IN · ANY LANGUAGE</p>
 
             <h1 className="lp-headline">
               Before you file a 311 complaint, see <em>what usually happens</em> to it.
@@ -82,7 +82,7 @@ export function Landing() {
               <span className="lp-or">
                 Or browse{' '}
                 <button className="linklike" onClick={() => navigate('explore')}>
-                  Citywide_data
+                  the citywide data
                 </button>
               </span>
             </div>
@@ -103,7 +103,7 @@ export function Landing() {
                 <span className="lp-tel-key">WINDOW:</span>
                 <span className="lp-tel-val">{DATA_WINDOW}</span>
               </div>
-              <div className="lp-tel-foot">CLASSIFIER_COVERAGE {coverage}</div>
+              <div className="lp-tel-foot">CLASSIFIER COVERAGE {coverage}</div>
             </div>
           </aside>
         </div>
@@ -112,7 +112,7 @@ export function Landing() {
       <div className="wrap lp-below stack">
         {/* ---- the finding ---- */}
         <section>
-          <p className="label">Service_outcomes — not complaint_volume</p>
+          <p className="label">Service outcomes — not complaint volume</p>
 
           <div className="lp-finding">
             <p className="lp-finding-claim">
@@ -161,7 +161,7 @@ export function Landing() {
 
         {/* ---- what comes back ---- */}
         <section>
-          <p className="label">What_you_get</p>
+          <p className="label">What you get</p>
           <ol className="steps">
             <li>
               <sup>01</sup>
@@ -198,10 +198,10 @@ export function Landing() {
 
         {/* ---- why the number can be trusted ---- */}
         <section>
-          <p className="label">Why_trust_the_number</p>
+          <p className="label">Why trust the number</p>
           <dl className="lp-why">
             <div className="lp-why-row">
-              <dt>NO_MODEL_NUMBERS</dt>
+              <dt>NO MODEL NUMBERS</dt>
               <dd>
                 The model has two jobs: mapping your words onto the 311 taxonomy, and phrasing the
                 answer in your language. Every statistic is a precomputed aggregate over{' '}
@@ -209,7 +209,7 @@ export function Landing() {
               </dd>
             </div>
             <div className="lp-why-row">
-              <dt>THIN_SAMPLES_LABELLED</dt>
+              <dt>THIN SAMPLES LABELLED</dt>
               <dd>
                 Eight records is noise. A forecast widens from your district to your borough to
                 citywide until it has enough data, and every answer reports the sample size, the
@@ -217,7 +217,7 @@ export function Landing() {
               </dd>
             </div>
             <div className="lp-why-row">
-              <dt>COVERAGE_REPORTED</dt>
+              <dt>COVERAGE REPORTED</dt>
               <dd>
                 {coverage} of records classify. The rest are counted and shown, never quietly folded
                 into an outcome — and coverage is reported per year, because one average can hide a

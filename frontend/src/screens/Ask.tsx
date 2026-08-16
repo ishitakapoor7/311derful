@@ -240,7 +240,7 @@ export function Ask() {
       <div className={`ask${sidebarOpen ? ' with-sidebar' : ''}`}>
         <div className="ask-main stack">
           <div>
-            <p className="label">Describe_the_problem</p>
+            <p className="label">Describe the problem</p>
             <AskInput
               key={seed.nonce}
               config={config}

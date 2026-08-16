@@ -33,7 +33,7 @@ export const FALLBACK_LANGUAGES = [
 ]
 
 /** The same window in the machine voice the landing telemetry block speaks in. */
-export const DATA_WINDOW = 'JAN_2020 — AUG_2026'
+export const DATA_WINDOW = 'JAN 2020 — AUG 2026'
 
 /**
  * VERIFIED: reported per year, never as a single average, because one number

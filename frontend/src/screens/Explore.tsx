@@ -107,7 +107,7 @@ export function Explore() {
 
   return (
     <div className="wrap" style={{ padding: '36px 20px 80px' }}>
-      <p className="label">Citywide_outcomes</p>
+      <p className="label">Citywide outcomes</p>
       <h1
         style={{
           fontSize: 'clamp(32px, 5.6vw, 52px)',
@@ -141,7 +141,7 @@ export function Explore() {
           <div className="section">
             <div className="map-head">
               <p className="label" style={{ margin: 0 }}>
-                Resolved_share_by_community_board
+                Resolved share by community board
               </p>
               <select
                 value={mapType}
@@ -188,7 +188,7 @@ export function Explore() {
           <div className="section">
             <div className="table-head">
               <p className="label" style={{ margin: 0 }}>
-                All_complaint_types
+                All complaint types
               </p>
               <input
                 type="search"
