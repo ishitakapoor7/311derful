@@ -194,7 +194,7 @@ const MIC_BLOCKED_MSG =
  * Worth its own check because a denied permission is indistinguishable from a
  * working mic that heard nothing: Chrome shows no prompt, getUserMedia rejects
  * inside the SDK, and the call opens deaf. The permission is per-origin
- * *including the port*, so allowing :8000 does nothing for :8091 -- which is
+ * *including the port*, so allowing :8000 does nothing for :5173 -- which is
  * exactly how you end up blocked without remembering blocking anything.
  */
 async function micBlocked() {
