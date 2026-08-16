@@ -242,24 +242,44 @@ function initWebSpeech() {
   recognition = new SR();
   recognition.interimResults = true;
   recognition.continuous = false;
+
+  // Both voice paths behave identically from here: recognised words land in the
+  // textarea as they settle, stopping never discards them, and only the engine
+  // deciding the speaker has finished triggers the ask.
+  let base = "";        // whatever was already typed when dictation started
+  let heard = false;    // did anything get recognised this run?
+  let stoppedByUser = false;
+
   recognition.onresult = (e) => {
     let final = "", interim = "";
     for (const r of e.results) (r.isFinal ? final += r[0].transcript : interim += r[0].transcript);
-    if (final) $("text").value = final;
+    if (final) {
+      heard = true;
+      $("text").value = [base, final].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+    }
     $("interim").textContent = interim;
   };
   recognition.onerror = (e) => {
     $("status").textContent = e.error === "not-allowed"
-      ? "Microphone blocked. You can still type." : `Speech error: ${e.error}.`;
+      ? MIC_BLOCKED_MSG : `Speech error: ${e.error}.`;
     setListening(false);
   };
-  recognition.onend = () => setListening(false);
+  recognition.onend = () => {
+    setListening(false);
+    // continuous=false means the engine ends the run once it hears the speaker
+    // stop -- that is the same end-of-thought signal Vapi gets from silence.
+    // A deliberate Stop is not, so it leaves the words for review instead.
+    if (heard && !stoppedByUser) ask();
+  };
 
   micBlocked().then((b) => { if (b) $("status").textContent = MIC_BLOCKED_MSG; });
 
   $("mic").onclick = async () => {
-    if (listening) return recognition.stop();
+    if (listening) { stoppedByUser = true; return recognition.stop(); }
     if (await micBlocked()) return void ($("status").textContent = MIC_BLOCKED_MSG);
+    base = $("text").value.trim();
+    heard = false;
+    stoppedByUser = false;
     recognition.lang = $("lang").value;
     recognition.start();
     setListening(true);
@@ -323,31 +343,42 @@ async function initVapi() {
     let utterance = [];
     let submitTimer = null;
 
+    // Every recognised final goes straight into the textarea. That is what makes
+    // losing dictation structurally impossible: the box, not this array, is where
+    // the words live, so it does not matter how the call ends.
+    const mirror = () => {
+      $("text").value = utterance.join(" ").replace(/\s+/g, " ").trim();
+    };
+
     const submitLater = () => {
       clearTimeout(submitTimer);
       submitTimer = setTimeout(() => {
-        const full = utterance.join(" ").replace(/\s+/g, " ").trim();
-        utterance = [];
-        if (!full) return;
+        if (!utterance.length) return;
+        mirror();
+        utterance = [];               // next dictation starts a new question
         $("interim").textContent = "";
-        $("text").value = full;
-        ask();
+        ask();                        // reads the textarea mirror() just filled
       }, SILENCE_MS);
     };
 
+    // Cancels a pending submit and ends the dictation WITHOUT touching the
+    // textarea. Pressing Stop means stop, not discard -- the words stay on
+    // screen to be read, corrected, and sent with the Ask button.
     const resetUtterance = () => { clearTimeout(submitTimer); utterance = []; };
 
     vapi.on("message", (m) => {
       if (m?.type !== "transcript" || m.role !== "user" || !m.transcript) return;
 
       if (m.transcriptType === "partial") {
-        // Still talking: hold off the submit and show the sentence so far.
+        // Still talking: hold off the submit. Only the in-flight fragment goes
+        // in the ghost line -- everything already settled is in the textarea.
         clearTimeout(submitTimer);
-        $("interim").textContent = [...utterance, m.transcript].join(" ");
+        $("interim").textContent = m.transcript;
         return;
       }
       utterance.push(m.transcript);
-      $("interim").textContent = utterance.join(" ");
+      mirror();
+      $("interim").textContent = "";
       submitLater();
     });
 
@@ -375,13 +406,17 @@ async function initVapi() {
     vapi.on("speech-start", resetIdle);
     vapi.on("call-start", () => {
       endingByUs = false;
-      resetUtterance();
+      // Continue whatever was already typed rather than overwriting it, so
+      // starting to speak mid-sentence extends the thought instead of eating it.
+      const typed = $("text").value.trim();
+      clearTimeout(submitTimer);
+      utterance = typed ? [typed] : [];
       setMic("live");                // only now can it actually hear anything
       resetIdle();
     });
     vapi.on("call-end", () => {
       clearTimeout(idleTimer);
-      resetUtterance();              // a half-heard sentence must not leak into the next call
+      resetUtterance();              // cancels the pending submit; textarea keeps the words
       setListening(false);
     });
 

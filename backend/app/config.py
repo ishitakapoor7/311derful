@@ -13,6 +13,8 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv("DATA_DIR", BACKEND_DIR / "data"))
 DUCKDB_PATH = DATA_DIR / "nyc311.duckdb"
 RAW_CACHE_DIR = DATA_DIR / "raw"
+# Small derived files that are committed and deployed, unlike the cube.
+REFERENCE_DIR = DATA_DIR / "reference"
 
 # NYC Open Data: "311 Service Requests from 2020 to Present".
 # Verified 2026-08-15: 22,145,244 rows, updated daily.

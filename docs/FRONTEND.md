@@ -171,3 +171,73 @@ Please avoid the default-AI-app look — no purple gradients, no chat bubbles in
 - **We cannot file complaints.** NYC has no public write API for 311. The output is a draft the user submits themselves. This has to stay honest in the UI copy.
 - **History is device-bound.** There are no accounts; it follows the `session_id` in that browser's `localStorage`. If cross-device matters, it needs a `?session=<uuid>` share link — don't promise more than that.
 - **Channel comparisons are correlation, not causation.** Phone-filed heat complaints fail on access more often than app-filed ones, but that's almost certainly who files which way. Don't present it as advice.
+
+---
+
+## New: `form_fields` — what 311 will ask you
+
+`/api/ask` now returns a `form_fields` array. It's live on `main`; nothing in the UI reads it yet.
+
+### What it is
+
+NYC has no Open311 API (the standard discovery paths 404) and the intake portal is a Dynamics app with hundreds of branching flows, so there's no clean way to *read* 311's form. We didn't scrape it — we **measured** it.
+
+The dataset has 48 columns, and most exist *because* the intake form collects them. Which ones a complaint type populates is a fingerprint of its form, and the distinct values of each categorical column are the dropdown options. HEAT/HOT WATER fills `descriptor` + `descriptor_2` and an exact address. Street Condition uses `address_type: BLOCKFACE` with a cross street — because it asks for a *block*, not an address. Taxi Complaint fills `taxi_pick_up_location` on 98% of rows.
+
+So this is another finding derived from the open data, not a scrape that breaks when they change their markup.
+
+### Shape
+
+Add to `types/api.ts`:
+
+```ts
+export interface FormOption {
+  value: string
+  /** How often filers pick this. Descriptive, NOT a recommendation. */
+  share: number
+}
+
+export interface FormField {
+  /** Dataset column it was recovered from. */
+  column: string
+  question: string
+  /** False when the field is conditional on an earlier answer. */
+  always: boolean
+  fill_rate: number
+  /** Absent/null for free-text fields and single-value fields. */
+  options?: FormOption[] | null
+}
+```
+
+and on `AskResponse`: `form_fields: FormField[]`.
+
+Real response for "no heat in my apartment":
+
+```json
+[
+ {"column":"descriptor","question":"What kind of problem is it?","always":true,"fill_rate":1.0,
+  "options":[{"value":"ENTIRE BUILDING","share":0.681},{"value":"APARTMENT ONLY","share":0.319}]},
+ {"column":"descriptor_2","question":"Which part of it?","always":true,"fill_rate":1.0,
+  "options":[{"value":"NO HEAT","share":0.467},{"value":"NO HOT WATER","share":0.298},
+             {"value":"NO HEAT AND NO HOT WATER","share":0.231}]},
+ {"column":"incident_address","question":"The street address","always":true,"fill_rate":1.0,"options":null}
+]
+```
+
+### What to build
+
+A **"What 311 will ask you"** panel in the Report view, next to the draft — the draft is what you say, this is what you'll be asked. Each field is one row: the question, then either its options as chips, or a plain "you'll need this" note when `options` is null.
+
+It earns its place by making the draft *actionable*: someone can gather the answers before they open the form instead of bailing halfway through.
+
+### Five rules
+
+1. **`form_fields: []` means unknown, never "nothing is asked."** Only the 60 busiest complaint types are mapped. Hide the panel; don't render "no questions."
+2. **`options: null` is not an empty dropdown.** It's either free text (an address) or a field with one real value. Render "You'll need: the street address" — not an empty chip list.
+3. **`always: false` means conditional** — say "may ask" rather than presenting it as required. Street Condition's `location_type` is 0.358.
+4. **`share` is descriptive, not advice.** 68% picking "ENTIRE BUILDING" means that's what's typical, **not** that picking it helps. Never phrase it as a tactic — we haven't measured outcome-by-answer yet.
+5. **Don't call it official.** It's recovered from filing patterns. "Based on how these complaints are usually filed" is honest; "311's official form" isn't.
+
+### Caveat worth showing
+
+Sentinels (`"Unspecified"`, `"N/A"`) are already filtered server-side, so anything you receive is a real answer someone gave.

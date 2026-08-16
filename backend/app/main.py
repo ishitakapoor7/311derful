@@ -27,6 +27,7 @@ from app.config import (
     resolved_voice_mode,
 )
 from app.forecast import forecast as run_forecast
+from app.formmap import fields_for
 from app.geocode import from_latlon, from_zip
 from app.models import (
     RESOLVED_OUTCOMES,
@@ -34,6 +35,8 @@ from app.models import (
     AdviseResponse,
     AskRequest,
     AskResponse,
+    BoardsResponse,
+    BoardShare,
     ConfigResponse,
     ExploreResponse,
     ExploreRow,
@@ -215,6 +218,9 @@ def ask(req: AskRequest) -> AskResponse:
         advice=advice,
         community_board=location[0],
         location_exact=location[1],
+        # What 311 will actually ask when they go to file it. Recovered from
+        # which columns this complaint type populates, not scraped.
+        form_fields=fields_for(intake_result.complaint_type),
     )
 
     # History is a side effect, never a reason to fail the request: the person
@@ -315,6 +321,66 @@ def explore(limit: int = 40) -> ExploreResponse:
         ],
         total_records=int(total_records or 0),
         classified_share=float(classified or 0.0),
+    )
+
+
+#: Below this a district is left off the map entirely. Mirrors MIN_BOARD_SAMPLE
+#: in the frontend's per-district fallback, so the map means the same thing
+#: whichever path drew it.
+MIN_BOARD_SAMPLE = 30
+
+
+@app.get("/api/explore/boards", response_model=BoardsResponse)
+def explore_boards(complaint_type: str, month: int | None = None) -> BoardsResponse:
+    """Resolution rate per community board for one complaint type.
+
+    This is what turns the finding from a statistic into a map. The citywide
+    number says three in four plumbing complaints end unaddressed; this says
+    which districts carry that and which do not, from the same cube cells the
+    personal forecast reads -- so the map and the forecast cannot disagree.
+
+    `month` is optional and defaults to pooling every month, which is the right
+    default for a map: a single month splits each district's sample twelve ways
+    and pushes most of them under the cutoff. The month actually used comes
+    back in the response so the UI states what it drew rather than assuming.
+
+    Districts under MIN_BOARD_SAMPLE are omitted, not greyed: a choropleth
+    gives every polygon the same visual weight, so shading one off nine records
+    asserts a finding the data cannot support, and there is nowhere on a map to
+    put the caveat.
+    """
+    resolved = ", ".join(f"'{o.value}'" for o in RESOLVED_OUTCOMES)
+
+    rows = cube().execute(
+        f"""
+        SELECT geo_key,
+               sum(n) FILTER (WHERE outcome IN ({resolved})) / sum(n)::DOUBLE,
+               sum(n)
+        FROM cube
+        WHERE geo_level = 'COMMUNITY_BOARD' AND time_window = 'RECENT'
+          AND complaint_type = ?
+          AND descriptor = 'ALL' AND channel = 'ALL'
+          AND month = ?
+          AND outcome <> 'UNCLASSIFIED'
+          -- 311 writes 'Unspecified QUEENS' when it never captured a district.
+          -- That is a missing value, not a place, and there is nothing on a
+          -- map to colour for it.
+          AND geo_key NOT ILIKE 'Unspecified%'
+        GROUP BY geo_key
+        HAVING sum(n) >= ?
+        ORDER BY sum(n) DESC
+        """,
+        [complaint_type, "ALL" if month is None else str(month), MIN_BOARD_SAMPLE],
+    ).fetchall()
+
+    return BoardsResponse(
+        complaint_type=complaint_type,
+        rows=[
+            BoardShare(board=b, resolved_share=share or 0.0, total=int(total))
+            for b, share, total in rows
+        ],
+        month=month,
+        min_sample=MIN_BOARD_SAMPLE,
     )
 
 
