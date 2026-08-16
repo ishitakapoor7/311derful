@@ -313,7 +313,11 @@ def explore(limit: int = 40) -> ExploreResponse:
                 complaint_type=ct,
                 agency=agency,
                 total=total,
-                resolved_share=share,
+                # NULL, not 0, when a type has no records in RESOLVED_OUTCOMES
+                # at all -- DOT closes every traffic signal and street light
+                # complaint without ever stating an outcome. None of them
+                # resolved, so the share is 0.0. Same guard as explore_boards.
+                resolved_share=share or 0.0,
                 dominant_failure=OutcomeClass(failure) if failure else None,
                 dominant_failure_share=failure_share,
             )
