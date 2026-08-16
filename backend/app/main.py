@@ -13,6 +13,7 @@ from pathlib import Path
 import duckdb
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import history
@@ -323,6 +324,18 @@ def explore(limit: int = 40) -> ExploreResponse:
 # speech input works with no HTTPS setup at all.
 #
 # Mounted last so it cannot shadow any /api route.
-_FRONTEND = Path(__file__).resolve().parent.parent.parent / "frontend"
-if _FRONTEND.is_dir():
-    app.mount("/", StaticFiles(directory=_FRONTEND, html=True), name="ui")
+#
+# The real UI is a Vite app in frontend/, which compiles to frontend/dist -- that
+# is what gets served once someone has run `npm run build`. Before then we fall
+# back to frontend/reference.html, the dependency-free reference implementation,
+# so a fresh clone still has a working page at / without needing Node.
+_ROOT = Path(__file__).resolve().parent.parent.parent / "frontend"
+_DIST = _ROOT / "dist"
+
+if (_DIST / "index.html").is_file():
+    app.mount("/", StaticFiles(directory=_DIST, html=True), name="ui")
+elif (_ROOT / "reference.html").is_file():
+
+    @app.get("/", include_in_schema=False)
+    def _reference_ui() -> FileResponse:
+        return FileResponse(_ROOT / "reference.html")

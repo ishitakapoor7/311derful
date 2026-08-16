@@ -1,0 +1,431 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>311derful</title>
+
+<!--
+  REFERENCE IMPLEMENTATION — not the product.
+
+  One file, no build step, no framework. Its job is to prove the whole flow
+  end to end and to be a working reference for the real frontend. Port the
+  logic; don't preserve the markup.
+
+  What is worth copying, because it is product behaviour rather than styling:
+
+  1. Voice mode comes from GET /api/config, never from a user-facing toggle.
+     The backend decides which path is live so it can be switched and debugged
+     from .env. Handle all three: webspeech, vapi, off.
+  2. The text box is always present. Voice is a way in, not the way in — and
+     typing is what keeps a demo alive when the mic misbehaves.
+  3. A LOW-confidence result looks different AND is spoken. A thin-sample
+     number presented as a prediction is the worst thing this app can do.
+  4. session_id is a browser-generated UUID in localStorage. It is not
+     identity — anyone holding it can read that history.
+
+  Not built here, left for the real frontend: the landing page and the
+  Report/Chat presentation toggle.
+-->
+
+<style>
+  :root {
+    --bg:#faf9f7; --fg:#1a1a1a; --muted:#6b6b6b; --line:#e2e0dc;
+    --accent:#1c5d99; --bad:#b03a2e; --ok:#1e7a4c; --card:#fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#16171a; --fg:#ececec; --muted:#9a9a9a; --line:#2e3035;
+      --accent:#6aa6e0; --bad:#e06c5c; --ok:#4fb383; --card:#1e2024;
+    }
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  .layout { display:flex; min-height:100vh; }
+  aside {
+    width:17rem; flex:none; border-right:1px solid var(--line);
+    padding:1.25rem 1rem; overflow-y:auto; background:var(--card);
+  }
+  aside[hidden] { display:none; }
+  main { flex:1; padding:2rem 1.25rem; max-width:46rem; margin:0 auto; }
+  h1 { font-size:1.6rem; margin:0 0 .25rem; }
+  .sub { color:var(--muted); margin:0 0 1.5rem; }
+  .row { display:flex; gap:.5rem; flex-wrap:wrap; align-items:flex-start; }
+  textarea {
+    flex:1 1 20rem; min-height:5.5rem; padding:.75rem; border-radius:10px;
+    border:1px solid var(--line); background:var(--card); color:inherit;
+    font:inherit; resize:vertical;
+  }
+  select, button {
+    padding:.6rem .9rem; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:inherit; font:inherit; cursor:pointer;
+  }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button[disabled] { opacity:.5; cursor:default; }
+  #mic.listening { background:var(--bad); border-color:var(--bad); color:#fff; }
+  .stack { display:flex; flex-direction:column; gap:.5rem; }
+  .card {
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:1rem 1.15rem; margin-top:1rem;
+  }
+  .card.low { border-color:var(--bad); border-width:2px; }
+  .label { font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
+  .headline { font-size:2rem; font-weight:650; line-height:1.1; margin:.3rem 0; }
+  .bar { height:8px; border-radius:4px; background:var(--line); overflow:hidden; margin-top:.3rem; }
+  .bar > i { display:block; height:100%; background:var(--accent); }
+  .outcome { margin:.7rem 0; }
+  .outcome .top { display:flex; justify-content:space-between; gap:1rem; font-size:.92rem; }
+  .outcome.resolved .bar > i { background:var(--ok); }
+  .outcome.failure  .bar > i { background:var(--bad); }
+  .caveat { color:var(--bad); font-weight:600; }
+  .interim { color:var(--muted); font-style:italic; min-height:1.4em; }
+  pre {
+    white-space:pre-wrap; background:var(--bg); border:1px solid var(--line);
+    border-radius:8px; padding:.8rem; font-size:.86rem; margin:.5rem 0 0;
+  }
+  .meta { color:var(--muted); font-size:.85rem; }
+  ul { margin:.4rem 0 0; padding-left:1.1rem; }
+  li { margin:.35rem 0; }
+  .hist { border:0; border-top:1px solid var(--line); padding:.6rem 0; width:100%;
+          text-align:left; border-radius:0; background:none; }
+  .hist:hover { color:var(--accent); }
+  .hist .t { font-weight:600; font-size:.9rem; }
+  .dot { display:inline-block; width:.55rem; height:.55rem; border-radius:50%; margin-right:.35rem; }
+  .dot.HIGH { background:var(--ok); } .dot.MEDIUM { background:var(--accent); } .dot.LOW { background:var(--bad); }
+</style>
+
+<div class="layout">
+  <aside id="sidebar">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <strong>Your complaints</strong>
+      <button id="clear" title="Clear all" style="padding:.25rem .5rem">✕</button>
+    </div>
+    <div id="history"><p class="meta">Nothing yet.</p></div>
+  </aside>
+
+  <main>
+    <div class="row" style="justify-content:space-between;align-items:baseline">
+      <div>
+        <h1>311derful</h1>
+        <p class="sub">Describe a problem. Find out what actually happens to complaints like yours.</p>
+      </div>
+      <button id="toggleSidebar">☰ History</button>
+    </div>
+
+    <div class="row">
+      <textarea id="text" placeholder="Type it, or press Speak — e.g. my radiator has been cold for three days"></textarea>
+      <div class="stack">
+        <select id="lang" hidden></select>
+        <button id="mic" hidden>🎤 Speak</button>
+        <button id="go" class="primary">Check</button>
+      </div>
+    </div>
+    <p class="interim" id="interim"></p>
+    <p class="meta" id="status"></p>
+
+    <div id="out"></div>
+  </main>
+</div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const API = location.origin;
+
+// session_id: a browser-generated UUID, not identity. Anyone holding it can
+// read that history, which is why nothing sensitive goes in it.
+const SESSION = localStorage.getItem("sid")
+  || (localStorage.setItem("sid", crypto.randomUUID()), localStorage.getItem("sid"));
+
+let CONFIG = { voice_mode: "off", languages: [], llm_configured: true };
+let address = null;
+
+// Geolocation is best-effort and never blocks. Declining just means the
+// forecast answers citywide and says so.
+navigator.geolocation?.getCurrentPosition(
+  (p) => { address = `${p.coords.latitude},${p.coords.longitude}`; },
+  () => {},
+  { timeout: 5000 }
+);
+
+// ---------------------------------------------------------------------------
+// Boot: the backend decides which voice path is live.
+// ---------------------------------------------------------------------------
+try {
+  CONFIG = await (await fetch(`${API}/api/config`)).json();
+} catch {
+  $("status").textContent = "Backend unreachable — is uvicorn running?";
+}
+
+if (!CONFIG.llm_configured) {
+  $("status").textContent = "No ANTHROPIC_API_KEY set, so /api/ask will fail. Add one to backend/.env.";
+}
+
+if (CONFIG.voice_mode === "webspeech") initWebSpeech();
+else if (CONFIG.voice_mode === "vapi") await initVapi();
+// "off": the mic stays hidden; text still works.
+
+loadHistory();
+
+// ---------------------------------------------------------------------------
+// Path A — browser SpeechRecognition. No keys, no cost. Cannot detect the
+// spoken language, so the backend sends a language list and we show a picker.
+// ---------------------------------------------------------------------------
+let listening = false, recognition = null, vapi = null;
+
+function initWebSpeech() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    $("status").textContent = "Speech input needs Chrome, Edge, or Safari. You can still type.";
+    return;
+  }
+  $("lang").hidden = false;
+  $("lang").innerHTML = CONFIG.languages
+    .map((l) => `<option value="${l.tag}">${l.label}</option>`).join("");
+  $("mic").hidden = false;
+
+  recognition = new SR();
+  recognition.interimResults = true;
+  recognition.continuous = false;
+  recognition.onresult = (e) => {
+    let final = "", interim = "";
+    for (const r of e.results) (r.isFinal ? final += r[0].transcript : interim += r[0].transcript);
+    if (final) $("text").value = final;
+    $("interim").textContent = interim;
+  };
+  recognition.onerror = (e) => {
+    $("status").textContent = e.error === "not-allowed"
+      ? "Microphone blocked. You can still type." : `Speech error: ${e.error}.`;
+    setListening(false);
+  };
+  recognition.onend = () => setListening(false);
+
+  $("mic").onclick = () => {
+    if (listening) return recognition.stop();
+    recognition.lang = $("lang").value;
+    recognition.start();
+    setListening(true);
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Path B — Vapi in the browser. No phone number.
+//
+// Vapi is the ears and mouth; this page orchestrates; the backend stays the
+// brain and stays local. Vapi's own LLM never produces content — we hand
+// say() the exact text the backend returned, which is what preserves the
+// guarantee that no model invents a number.
+//
+// It has to be this shape: Vapi's client-side tools need no server URL but
+// cannot return a result to the model, so "Vapi's LLM calls our API as a
+// tool" is not available.
+// ---------------------------------------------------------------------------
+async function initVapi() {
+  try {
+    const { default: Vapi } = await import("https://esm.sh/@vapi-ai/web@2");
+    vapi = new Vapi(CONFIG.vapi_public_key);
+    $("mic").hidden = false;
+
+    // Silence the assistant's own LLM the moment the call connects. Without
+    // this it answers in its own words alongside our say(), and its answer
+    // would not be grounded in the cube. 'mute-assistant' is a documented
+    // control message (see ControlMessages in @vapi-ai/web types).
+    vapi.on("call-start", () => {
+      vapi.send({ type: "control", control: "mute-assistant" });
+    });
+
+    vapi.on("message", (m) => {
+      // NOTE: the SDK types this event as `any` — the transcript shape below
+      // matches Vapi's documented server events but is NOT type-guaranteed.
+      // First thing to check if voice input silently does nothing:
+      //   vapi.on("message", console.log)
+      if (m?.type !== "transcript" || m?.role !== "user") return;
+      if (m.transcriptType === "partial") $("interim").textContent = m.transcript;
+      if (m.transcriptType === "final") {
+        $("interim").textContent = "";
+        $("text").value = m.transcript;
+        ask();                       // transcript is final: go straight to the answer
+      }
+    });
+    vapi.on("error", (e) => { $("status").textContent = `Vapi: ${e?.message ?? e}`; setListening(false); });
+    vapi.on("call-end", () => setListening(false));
+
+    $("mic").onclick = () => {
+      if (listening) return vapi.stop();
+      vapi.start(CONFIG.vapi_assistant_id);
+      setListening(true);
+    };
+  } catch (err) {
+    // Never let a voice failure take the page with it.
+    $("status").textContent = `Vapi failed to load (${err.message}). You can still type.`;
+  }
+}
+
+function setListening(on) {
+  listening = on;
+  $("mic").classList.toggle("listening", on);
+  $("mic").textContent = on ? "◼ Stop" : "🎤 Speak";
+  if (!on) $("interim").textContent = "";
+  $("status").textContent = on ? "Listening…" : "";
+}
+
+/** Speak a reply through whichever path is live. */
+function speak(text, lang) {
+  if (CONFIG.voice_mode === "vapi" && vapi) return void vapi.say(text);
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang?.includes("-") ? lang : `${lang || "en"}-${(lang || "en").toUpperCase()}`;
+  speechSynthesis.speak(u);
+}
+
+// ---------------------------------------------------------------------------
+// Ask
+// ---------------------------------------------------------------------------
+$("go").onclick = ask;
+$("text").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask();
+});
+
+async function ask() {
+  const text = $("text").value.trim();
+  if (!text) return;
+  $("go").disabled = true;
+  $("out").innerHTML = "";
+  // Two model calls means a few seconds. Name the work rather than spinning.
+  $("status").textContent = "Matching your problem to 311's categories, then checking 22 million records…";
+
+  try {
+    const res = await fetch(`${API}/api/ask`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        text,
+        lang: CONFIG.voice_mode === "webspeech" ? $("lang").value?.split("-")[0] : null,
+        address,
+        source: listening ? "voice" : "text",
+        session_id: SESSION,
+      }),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    render(await res.json());
+    loadHistory();
+  } catch (err) {
+    $("status").textContent = `Something went wrong: ${err.message}`;
+  } finally {
+    $("go").disabled = false;
+  }
+}
+
+const PRETTY = {
+  VERIFIED_FIXED:"Confirmed fixed", ACTION_TAKEN:"Agency took action",
+  NO_ACCESS:"Inspector couldn't get in", DUPLICATE:"Closed as someone else's duplicate",
+  NOTHING_FOUND:"Responded, found nothing", NO_ACTION_NEEDED:"Judged no action needed",
+  GONE_ON_ARRIVAL:"Responsible party had gone", REFERRED:"Sent to another agency",
+  PENDING:"Still open", NO_OUTCOME_GIVEN:"Closed without saying what happened",
+};
+const RESOLVED = ["VERIFIED_FIXED", "ACTION_TAKEN"];
+const pct = (x) => `${Math.round(x * 100)}%`;
+
+function render(d) {
+  $("status").textContent = "";
+
+  // Weak taxonomy match: ask rather than forecast against the wrong category.
+  if (d.intake.clarifying_question) {
+    $("out").innerHTML = `<div class="card"><div class="label">One quick question</div>
+      <p>${esc(d.intake.clarifying_question)}</p></div>`;
+    speak(d.intake.clarifying_question, d.intake.detected_lang);
+    return;
+  }
+
+  const f = d.forecast, a = d.advice;
+  const where = { COMMUNITY_BOARD:"in your district", BOROUGH:"in your borough", CITYWIDE:"citywide" }[f.geo_level];
+
+  $("out").innerHTML = `
+    <div class="card ${f.confidence_tier === "LOW" ? "low" : ""}">
+      <div class="label">${esc(f.complaint_type)}${f.descriptor ? " · " + esc(f.descriptor) : ""} · ${esc(f.agency)}</div>
+      <div class="headline">${pct(f.resolved_share)}</div>
+      <div>end with the problem actually addressed, ${where}.${
+        f.baseline_resolved_share != null ? ` &nbsp;·&nbsp; citywide average ${pct(f.baseline_resolved_share)}` : ""}</div>
+      ${a ? `<p>${esc(a.narrative)}</p>` : ""}
+      ${a?.caveat ? `<p class="caveat">⚠ ${esc(a.caveat)}</p>` : ""}
+    </div>
+
+    <div class="card">
+      <div class="label">What actually happens</div>
+      ${f.outcomes.map((o) => `
+        <div class="outcome ${RESOLVED.includes(o.outcome) ? "resolved" : "failure"}">
+          <div class="top"><span>${esc(PRETTY[o.outcome] || o.outcome)}</span>
+            <span>${pct(o.share)}${o.median_days_to_close != null ? ` · ${o.median_days_to_close}d` : ""}</span></div>
+          <div class="bar"><i style="width:${(o.share * 100).toFixed(1)}%"></i></div>
+        </div>`).join("")}
+      <p class="meta">
+        Based on ${f.sample_size.toLocaleString()} similar complaints ${where}
+        (${f.time_window === "FULL_HISTORY" ? "all years" : "recent years"}).
+        ${f.unclassified_count ? `${f.unclassified_count.toLocaleString()} more couldn't be classified and are excluded.` : ""}
+        ${d.community_board && !d.location_exact ? "Location is approximate." : ""}
+      </p>
+    </div>
+
+    ${a?.tips?.length ? `<div class="card"><div class="label">What changes the odds</div>
+      <ul>${a.tips.map((t) => `<li>${esc(t.text)}</li>`).join("")}</ul></div>` : ""}
+
+    ${a ? `<div class="card"><div class="label">Your complaint, ready to submit</div>
+      <p class="meta">We can't file this for you — NYC has no public API for submitting 311 complaints.</p>
+      <pre>${esc(a.draft_text)}</pre>
+      <button onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent)">Copy</button>
+    </div>` : ""}`;
+
+  // The caveat rides along with the narrative: someone listening rather than
+  // reading must still hear that the sample was thin.
+  if (a) speak(a.caveat ? `${a.narrative} ${a.caveat}` : a.narrative, d.intake.detected_lang);
+}
+
+// ---------------------------------------------------------------------------
+// History sidebar. Clicking an entry re-renders stored values — no model call.
+// ---------------------------------------------------------------------------
+$("toggleSidebar").onclick = () => { $("sidebar").hidden = !$("sidebar").hidden; };
+
+$("clear").onclick = async () => {
+  await fetch(`${API}/api/history?session_id=${SESSION}`, { method: "DELETE" });
+  loadHistory();
+};
+
+async function loadHistory() {
+  let entries = [];
+  try {
+    entries = (await (await fetch(`${API}/api/history?session_id=${SESSION}`)).json()).entries;
+  } catch { return; }
+
+  $("history").innerHTML = entries.length
+    ? entries.map((e, i) => `<button class="hist" data-i="${i}">
+        <span class="dot ${e.confidence_tier}"></span><span class="t">${esc(e.complaint_type)}</span>
+        <div class="meta">${pct(e.resolved_share)} resolved · ${new Date(e.created_at).toLocaleDateString()}</div>
+        <div class="meta">${esc(e.text.slice(0, 60))}${e.text.length > 60 ? "…" : ""}</div>
+      </button>`).join("")
+    : `<p class="meta">Nothing yet.</p>`;
+
+  for (const btn of $("history").querySelectorAll(".hist")) {
+    btn.onclick = () => showStored(entries[+btn.dataset.i]);
+  }
+}
+
+function showStored(e) {
+  // Deliberately no re-run: the stored row has everything needed to redraw.
+  $("out").innerHTML = `<div class="card ${e.confidence_tier === "LOW" ? "low" : ""}">
+      <div class="label">${esc(e.complaint_type)} · ${esc(e.agency)} · ${new Date(e.created_at).toLocaleString()}</div>
+      <div class="headline">${pct(e.resolved_share)}</div>
+      <div>ended with the problem actually addressed.</div>
+      ${e.narrative ? `<p>${esc(e.narrative)}</p>` : ""}
+      <p class="meta">You asked: “${esc(e.text)}” · based on ${e.sample_size?.toLocaleString()} complaints</p>
+    </div>
+    ${e.draft_text ? `<div class="card"><div class="label">Your complaint</div>
+      <pre>${esc(e.draft_text)}</pre></div>` : ""}`;
+  $("status").textContent = "";
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+</script>
