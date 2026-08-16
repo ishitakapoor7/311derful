@@ -225,7 +225,7 @@ export function Ask() {
       <div className={`ask${sidebarOpen ? ' with-sidebar' : ''}`}>
         <div className="ask-main stack">
           <div>
-            <p className="label">Describe the problem</p>
+            <p className="label">Describe_the_problem</p>
             <AskInput config={config} busy={busy} onSubmit={handleSubmit} />
           </div>
 

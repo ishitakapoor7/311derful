@@ -107,8 +107,14 @@ export function Explore() {
 
   return (
     <div className="wrap" style={{ padding: '36px 20px 80px' }}>
-      <p className="label">Citywide</p>
-      <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', maxWidth: '18ch' }}>
+      <p className="label">Citywide_outcomes</p>
+      <h1
+        style={{
+          fontSize: 'clamp(32px, 5.6vw, 52px)',
+          letterSpacing: '-0.035em',
+          maxWidth: '18ch',
+        }}
+      >
         Where complaints go to die
       </h1>
 
@@ -135,7 +141,7 @@ export function Explore() {
           <div className="section">
             <div className="map-head">
               <p className="label" style={{ margin: 0 }}>
-                Resolved share by community board
+                Resolved_share_by_community_board
               </p>
               <select
                 value={mapType}
@@ -182,7 +188,7 @@ export function Explore() {
           <div className="section">
             <div className="table-head">
               <p className="label" style={{ margin: 0 }}>
-                All complaint types
+                All_complaint_types
               </p>
               <input
                 type="search"

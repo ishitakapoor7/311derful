@@ -8,6 +8,12 @@ interface Props {
 }
 
 /**
+ * Below this share a segment is too thin to hold its own percentage at the
+ * sizes this bar uses, so the label is allowed to cross the divide.
+ */
+const NARROW = 0.3
+
+/**
  * The gap, not the metric.
  *
  * A number in a bordered box reads as a statistic. The same number as a filled
@@ -29,10 +35,22 @@ export function GapBar({ resolvedShare, label, caption }: Props) {
         role="img"
         aria-label={`${pct(resolvedShare)} of ${label} were actually addressed; ${pct(failedShare)} closed without the problem being fixed`}
       >
-        <div className="gap-fixed" style={{ width: `${resolvedShare * 100}%` }}>
+        {/* A share small enough that its own segment cannot hold the number
+            lets the number run past the divide instead of being crushed or
+            clipped. Both segments are dark and the text is white, so it stays
+            legible either side, and .gap-bar's overflow keeps it in the bar. */}
+        <div
+          className="gap-fixed"
+          data-narrow={resolvedShare < NARROW}
+          style={{ width: `${resolvedShare * 100}%` }}
+        >
           <span className="gap-fixed-n">{pct(resolvedShare)}</span>
         </div>
-        <div className="gap-failed" style={{ width: `${failedShare * 100}%` }}>
+        <div
+          className="gap-failed"
+          data-narrow={failedShare < NARROW}
+          style={{ width: `${failedShare * 100}%` }}
+        >
           <span className="gap-failed-n">{pct(failedShare)}</span>
         </div>
       </div>

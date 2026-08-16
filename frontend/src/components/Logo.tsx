@@ -22,19 +22,19 @@ export function Logo({ size = 30, withWordmark = true }: LogoProps) {
       >
         <defs>
           <clipPath id="logo-clip">
-            <rect width="64" height="64" rx="15" />
+            <rect width="64" height="64" />
           </clipPath>
         </defs>
         <g clipPath="url(#logo-clip)">
           <rect width="64" height="64" fill="var(--ink)" />
           <rect y="52" width="64" height="12" fill="var(--accent)" />
-          <rect x="17" y="11" width="30" height="4.5" rx="2.25" fill="#3d3d49" />
+          <rect x="17" y="11" width="30" height="4.5" fill="#3d3d49" />
           <text
             x="32"
             y="43"
             textAnchor="middle"
             fill="#ffffff"
-            fontFamily="'IBM Plex Mono', ui-monospace, monospace"
+            fontFamily="'JetBrains Mono', ui-monospace, monospace"
             fontSize="24"
             fontWeight="600"
             letterSpacing="-0.5"

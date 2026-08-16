@@ -1,52 +1,57 @@
 /* ==========================================================================
    311derful — design tokens
-   "The card catalog, applied to a case file." Hairline-ruled cards, one accent
-   (violet, the mark's own colour) plus a fixed/unresolved pair reserved
-   exclusively for outcome truth-telling, so it never reads as decoration.
-   Archivo for anything 311derful says in its own voice; mono for anything the
-   city said or the dataset counted. No shadows, no gradients, light mode only.
+   "The forensic ledger." Warm paper, near-black ink, hard edges everywhere —
+   no radius, no shadow, no gradient. One accent (high-vis orange, used for the
+   claim the page is making and nothing else) plus a fixed/unresolved pair
+   reserved exclusively for outcome truth-telling, so colour never decorates.
+   Inter Tight for anything 311derful says in its own voice; JetBrains Mono for
+   anything the city said, the dataset counted, or the machine is doing.
    ========================================================================== */
 
 :root {
-  --paper: oklch(97.2% 0 250);
-  --paper-2: oklch(96% 0.004 260);
-  --paper-3: oklch(93% 0.006 260);
-  --card: #ffffff;
+  --paper: oklch(97.2% 0.014 95);
+  --paper-2: oklch(94.5% 0.011 95);
+  --paper-3: oklch(91.5% 0.011 95);
+  --card: oklch(99.5% 0.004 95);
 
-  --ink: oklch(26% 0.012 262);
-  --ink-2: color-mix(in oklch, var(--ink) 68%, var(--paper));
-  --ink-3: color-mix(in oklch, var(--ink) 42%, var(--paper));
-  --rule: color-mix(in oklch, var(--ink) 13%, var(--paper));
-  --rule-2: var(--ink);
+  --ink: oklch(17% 0 0);
+  --ink-2: oklch(38% 0.006 95);
+  --ink-3: oklch(48% 0.008 95);
+  --rule: oklch(17% 0 0 / 0.12);
+  --rule-2: oklch(17% 0 0 / 0.45);
 
-  /* the stamp — the product's own voice */
-  --accent: oklch(50% 0.15 288);
-  --accent-soft: color-mix(in oklch, var(--accent) 11%, white);
+  /* the claim — the product's own voice */
+  --accent: oklch(60.1% 0.213 33);
+  --accent-soft: color-mix(in oklch, var(--accent) 10%, var(--paper));
 
   /* fixed — something changed */
-  --resolved: oklch(52% 0.11 160);
-  --resolved-soft: color-mix(in oklch, var(--resolved) 13%, white);
+  --resolved: oklch(50% 0.125 157);
+  --resolved-soft: color-mix(in oklch, var(--resolved) 12%, var(--paper));
 
-  /* unresolved — closed, nothing fixed */
-  --failure: oklch(58% 0.11 75);
-  --failure-soft: color-mix(in oklch, var(--failure) 16%, white);
-  --failure-ink: color-mix(in oklch, var(--failure) 62%, black);
+  /* unresolved — closed, nothing fixed. Deeper and redder than the accent so
+     the two never trade places at a glance; the accent is always a link or a
+     control, the failure colour is always a measured share. */
+  --failure: oklch(52% 0.191 25);
+  --failure-soft: color-mix(in oklch, var(--failure) 11%, var(--paper));
+  --failure-ink: color-mix(in oklch, var(--failure) 78%, black);
 
-  --neutral: oklch(58% 0.01 260);
-  --neutral-soft: color-mix(in oklch, var(--neutral) 12%, white);
+  --neutral: oklch(68% 0.01 95);
+  --neutral-soft: color-mix(in oklch, var(--neutral) 22%, var(--paper));
 
-  --warn: oklch(48% 0.12 70);
-  --warn-soft: color-mix(in oklch, var(--warn) 14%, white);
+  --warn: oklch(55% 0.13 65);
+  --warn-soft: color-mix(in oklch, var(--warn) 12%, var(--paper));
 
-  --sans: 'Archivo', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
-  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --sans: 'Inter Tight', 'Inter', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 
-  --wrap: 1080px;
+  --wrap: 1140px;
   --gap: 24px;
 
-  --radius-sm: 5px;
-  --radius-md: 10px;
-  --radius-pill: 999px;
+  /* Hard edges are the direction, not an oversight. Kept as tokens so the one
+     place that needs a curve (the confidence dot) has to opt in explicitly. */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-pill: 0px;
 }
 
 /* Light mode is forced, deliberately.
@@ -115,12 +120,13 @@ button {
 
 /* ---------- type ---------- */
 
+/* Section labels are machine-voice: mono, snake_case, no shouting. The
+   underscores in the copy carry the register, so no text-transform here. */
 .label {
   font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   color: var(--ink-3);
   margin: 0 0 10px;
 }
@@ -265,21 +271,52 @@ button {
   gap: 14px;
 }
 
+/* Same "you are here" treatment the nav items get, so the CTA reads as the
+   current page rather than as a button that has gone inert. */
+.header-end .btn[aria-current='true'] {
+  color: var(--ink);
+  background: var(--paper-2);
+  border-color: var(--rule);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
 .nav {
   display: flex;
   gap: 4px;
 }
 
-.nav button {
+/* The build's data source, stated in the chrome. Orange because it is the one
+   thing on the page that is about the app rather than about the city. */
+.mode-badge {
   font-family: var(--mono);
   font-size: 11px;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  border: 1px solid color-mix(in oklch, var(--accent) 40%, transparent);
+  background: var(--accent-soft);
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+
+.nav button {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
   background: none;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   color: var(--ink-3);
   padding: 7px 11px;
+}
+
+/* The header CTA is a machine control like the nav beside it, not a marketing
+   button, so it takes the same voice at the same size. */
+.header-end .btn {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .nav button:hover {
@@ -345,52 +382,51 @@ button {
   max-width: 20ch;
 }
 
-.hero-stat {
-  border: 1px solid var(--rule);
-  border-left: 3px solid var(--failure);
-  border-radius: var(--radius-md);
-  padding: 20px 22px;
-  background: var(--paper-2);
-}
-
-.hero-stat .n {
-  font-size: clamp(38px, 8vw, 62px);
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
 .steps {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
+/* Numbered rows, the step index in the machine voice and the step itself in the
+   product's. Ruled rather than carded -- three boxes in a row is the layout
+   every civic-tech landing page already has. */
 .steps li {
-  font-size: clamp(19px, 3.2vw, 26px);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  padding: 9px 0;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 4px 14px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--rule);
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: baseline;
 }
 
-.steps li:nth-child(2) {
-  color: var(--ink-2);
-}
-.steps li:nth-child(3) {
-  color: var(--ink-3);
+.steps li:first-child {
+  border-top: 1px solid var(--rule);
 }
 
 .steps sup {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--accent);
+  vertical-align: baseline;
+  top: 0;
+}
+
+.steps strong {
+  display: block;
+  font-size: clamp(18px, 2.6vw, 24px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.steps em {
+  display: block;
+  font-style: normal;
+  font-size: 14.5px;
+  color: var(--ink-3);
+  max-width: 62ch;
+  margin-top: 5px;
 }
 
 .trust {
@@ -462,33 +498,32 @@ button {
 .lp-hero-in {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
-  column-gap: 44px;
-  row-gap: 30px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.62fr);
+  column-gap: 48px;
+  row-gap: 22px;
   align-items: start;
-  padding-top: 56px;
-  padding-bottom: 72px;
+  padding-top: 64px;
+  padding-bottom: 80px;
 }
 
-.lp-rail {
-  position: absolute;
-  left: -4px;
-  top: 4px;
+/* The thesis, stated once in the machine voice before the headline says it in
+   the product's own. */
+.lp-eyebrow {
+  grid-column: 1 / -1;
   margin: 0;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
   font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   color: var(--accent);
 }
 
 .lp-headline {
   grid-column: 1 / -1;
-  font-size: clamp(34px, 6.2vw, 60px);
-  max-width: 17ch;
+  font-size: clamp(40px, 7.4vw, 78px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  max-width: 14ch;
 }
 
 /* The one accented phrase in the headline — the claim the page is making. */
@@ -507,86 +542,136 @@ button {
 
 .lp-actions {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   flex-wrap: wrap;
+  align-items: center;
   margin-bottom: 22px;
 }
 
-/* ---------- landing case file ---------- */
-
-.lp-case {
-  grid-column: 2;
-  background: var(--card);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-md);
-  padding: 18px 20px 20px;
-}
-
-.lp-case-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.lp-case-n {
+.lp-or {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--ink-3);
-  font-variant-numeric: tabular-nums;
 }
 
-.lp-case-meta {
+/* ---------- landing telemetry ----------
+   What was read, over what window, and how much of it could be accounted for.
+   Ruled like an instrument readout rather than boxed like a card, so it reads
+   as the machine reporting its own inputs. */
+
+.lp-telemetry {
+  grid-column: 2;
+  border-top: 1px solid var(--rule-2);
+  border-bottom: 1px solid var(--rule);
+  padding: 14px 0 12px;
+}
+
+.lp-tel-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.lp-tel-key {
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.06em;
   color: var(--ink-3);
-  border-top: 1px solid var(--rule);
-  margin: 14px 0 16px;
-  padding-top: 12px;
 }
 
-.lp-case-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-  border-top: 1px solid var(--rule);
-  margin-top: 16px;
-  padding-top: 14px;
+.lp-tel-val {
+  font-family: var(--mono);
+  font-size: clamp(15px, 2.1vw, 19px);
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.lp-case-read {
-  font-size: 13.5px;
-  color: var(--ink-2);
-}
-
-/* Rubber-stamped, because "closed" is the status the city actually recorded. */
-.lp-stamp {
+.lp-tel-foot {
   font-family: var(--mono);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent);
-  border: 1.5px solid var(--accent);
-  border-radius: var(--radius-sm);
-  padding: 5px 10px;
-  transform: rotate(-4deg);
-  flex-shrink: 0;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  padding-top: 11px;
 }
 
 .lp-below {
-  padding-top: 44px;
-  padding-bottom: 64px;
+  padding-top: 52px;
+  padding-bottom: 72px;
 }
 
-@media (min-width: 981px) {
-  .lp-hero-in {
-    padding-left: 52px;
-  }
+/* ---------- landing finding ---------- */
+
+.lp-finding {
+  border-left: 3px solid var(--failure);
+  background: var(--paper-2);
+  padding: 22px 24px;
+}
+
+.lp-finding-claim {
+  margin: 0;
+  font-size: clamp(19px, 2.6vw, 25px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  max-width: 34ch;
+}
+
+.lp-finding-n {
+  font-size: clamp(44px, 8.4vw, 76px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  color: var(--failure);
+  font-variant-numeric: tabular-nums;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.lp-finding-bar {
+  margin-top: 22px;
+}
+
+.lp-finding-meta {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  border-top: 1px solid var(--rule);
+  margin: 18px 0 0;
+  padding-top: 12px;
+}
+
+.lp-finding-fail {
+  color: var(--failure-ink);
+  font-weight: 600;
+}
+
+.lp-prose {
+  max-width: 68ch;
+  margin-top: 20px;
+}
+
+.lp-prose code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  background: var(--paper-3);
+  padding: 1px 5px;
+}
+
+/* The one promise the page must not overstate, kept on the landing screen and
+   not only in the small print under a result. */
+.lp-cannot {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  border-top: 1px solid var(--rule);
+  padding-top: 14px;
+  margin: 0;
 }
 
 @media (max-width: 980px) {
@@ -596,14 +681,11 @@ button {
     padding-bottom: 48px;
   }
 
+  .lp-eyebrow,
   .lp-headline,
   .lp-copy,
-  .lp-case {
+  .lp-telemetry {
     grid-column: 1;
-  }
-
-  .lp-rail {
-    display: none;
   }
 }
 
@@ -923,7 +1005,6 @@ button {
 .swatch {
   width: 12px;
   height: 12px;
-  border-radius: 3px;
   display: inline-block;
 }
 
@@ -1422,10 +1503,24 @@ td.num {
 .gap-fixed-n,
 .gap-failed-n {
   color: #fff;
-  font-size: clamp(20px, 4.4vw, 38px);
+  font-size: clamp(17px, 3.1vw, 30px);
   font-weight: 700;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding: 0 10px;
+}
+
+/* Too thin to centre a number in: pin the label to the segment's own edge and
+   let it run over the divide rather than clipping it. */
+.gap-fixed[data-narrow='true'],
+.gap-failed[data-narrow='true'] {
+  overflow: visible;
+  justify-content: flex-start;
+}
+
+.gap-failed[data-narrow='true'] {
+  justify-content: flex-end;
 }
 
 .gap-legend {
@@ -1447,7 +1542,6 @@ td.num {
 .gap-swatch {
   width: 12px;
   height: 12px;
-  border-radius: 3px;
   display: inline-block;
 }
 
