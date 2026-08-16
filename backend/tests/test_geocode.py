@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.config import DUCKDB_PATH
 from app.geocode import boro_cd_to_community_board, from_latlon
 
 
@@ -71,3 +72,44 @@ def test_point_outside_the_city_is_reported_as_not_found():
 def test_borough_is_populated_alongside_the_board():
     result = from_latlon(40.7532, -73.9822)
     assert result.borough == "MANHATTAN"
+
+
+# ---------------------------------------------------------------------------
+# ZIP fallback. Pinned because it was broken from the day it was written: the
+# query selected incident_zip from `outcomes`, which drops that column during
+# aggregation, so every ZIP raised a BinderException. No test touched it.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(not DUCKDB_PATH.exists(), reason="cube not built")
+def test_from_zip_resolves_against_the_real_database():
+    import duckdb
+
+    from app.geocode import from_zip
+
+    con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
+    try:
+        result = from_zip("10025", con)  # Upper West Side
+    finally:
+        con.close()
+
+    assert result.community_board is not None
+    assert "MANHATTAN" in result.community_board
+    # ZIPs and community districts do not nest; this must never claim exactness.
+    assert result.exact is False
+
+
+@pytest.mark.skipif(not DUCKDB_PATH.exists(), reason="cube not built")
+def test_unknown_zip_returns_no_board_rather_than_raising():
+    import duckdb
+
+    from app.geocode import from_zip
+
+    con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
+    try:
+        result = from_zip("99999", con)
+    finally:
+        con.close()
+
+    assert result.community_board is None
+    assert result.exact is False

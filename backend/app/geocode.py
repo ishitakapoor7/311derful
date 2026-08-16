@@ -109,13 +109,11 @@ def from_zip(zip_code: str, con) -> GeoResult:
     ZIP codes and community districts do not nest, so this is approximate by
     construction -- ``exact`` is False and callers should surface that.
     """
+    # Reads the precomputed table rather than aggregating 22M raw rows on every
+    # request. That was slow, and it was also the only thing keeping the raw
+    # data on the serving path at all -- see app/data/export.py.
     row = con.execute(
-        """
-        SELECT community_board, count(*) AS n
-        FROM outcomes
-        WHERE incident_zip = ? AND community_board <> 'UNKNOWN'
-        GROUP BY community_board ORDER BY n DESC LIMIT 1
-        """,
+        "SELECT community_board FROM zip_board WHERE zip = ?",
         [str(zip_code).strip()[:5]],
     ).fetchone()
     if not row:
