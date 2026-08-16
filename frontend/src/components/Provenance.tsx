@@ -1,63 +1,55 @@
 import { USE_MOCK } from '../api/client'
-import { VERIFIED_TYPES } from '../api/mock'
-import { PLACEHOLDER } from '../lib/format'
+import { count } from '../lib/format'
+import { DATA_RANGE, TOTAL_RECORDS } from '../lib/constants'
 
 /**
- * Honesty, relocated.
+ * Provenance, stated once, at the foot of the screen.
  *
- * The earlier build shouted -- a persistent orange banner plus a
- * "[placeholder- replace with real data]" chip in the middle of the result. That
- * is accurate and it reads as "unfinished" from across a room. The honesty stays;
- * it just moves: estimated figures carry a quiet inline marker, and one
- * provenance line at the foot of the page states exactly what is computed and
- * what is not.
- *
- * The full marker text still appears in `title` on every marker and verbatim in
- * the footer, so nothing is hidden from anyone who looks.
+ * An earlier build shouted -- an orange banner plus a
+ * "[placeholder- replace with real data]" chip in the middle of the result --
+ * because a good deal of what it rendered was invented. Nothing is now: every
+ * figure on screen is a cube lookup, and anything this app cannot compute is
+ * left out rather than filled in. So the honesty that remains is a plain
+ * statement of what was measured and what was written.
  */
-export function Est({ what }: { what?: string }) {
-  if (!USE_MOCK) return null
-  return (
-    <span className="est" title={what ? `${PLACEHOLDER} — ${what}` : PLACEHOLDER}>
-      est.
-    </span>
-  )
-}
-
-export function isVerifiedType(complaintType: string): boolean {
-  return VERIFIED_TYPES.has(complaintType)
-}
-
 interface FooterProps {
-  /** What this particular screen computed, if anything. */
+  /** What this particular screen computed from the dataset. */
   verified?: string[]
-  estimated?: string[]
+  /** What the model phrased, from those numbers. Never a number itself. */
+  written?: string[]
+  /** Overrides the dataset totals when the screen has live ones. */
+  totalRecords?: number
+  range?: string
 }
 
-export function ProvenanceFooter({ verified = [], estimated = [] }: FooterProps) {
-  const alwaysVerified = [
-    '22,145,244 record count',
-    'date range 2020–2026',
-    'per-type resolved shares',
-    ...verified,
-  ]
-
+export function ProvenanceFooter({
+  verified = [],
+  written = [],
+  totalRecords = TOTAL_RECORDS,
+  range = DATA_RANGE,
+}: FooterProps) {
   return (
     <div className="provenance">
       <div className="provenance-row">
         <span className="provenance-key">Computed from the dataset</span>
-        <span>{alwaysVerified.join(' · ')}</span>
+        <span>
+          {[`${count(totalRecords)} records`, `${range}`, ...verified].join(' · ')}
+        </span>
       </div>
-      {USE_MOCK && estimated.length > 0 && (
+
+      {written.length > 0 && (
         <div className="provenance-row">
-          <span className="provenance-key">Estimated, marked “est.”</span>
-          <span>{estimated.join(' · ')}</span>
+          <span className="provenance-key">Written by the model</span>
+          <span>{written.join(' · ')}</span>
         </div>
       )}
+
       {USE_MOCK && (
         <div className="provenance-note">
-          Estimated figures are pending the live query and are marked inline.
-          Source string: <code>{PLACEHOLDER}</code>
+          Offline demo: answers come from responses committed at{' '}
+          <code>frontend/fixtures/</code>, measured against the same cube. Figures that need a
+          live query — the full complaint-type table, the per-board map — are omitted here
+          rather than estimated.
         </div>
       )}
     </div>

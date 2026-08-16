@@ -16,9 +16,12 @@ export function ShareResult({ response }: { response: AskResponse }) {
   const where = geoPhrase(forecast.geo_level, community_board)
   const sentence = `${intake.complaint_type} complaints ${where === 'citywide' ? 'in NYC' : `in ${where}`} get fixed ${pctShort(forecast.resolved_share)} of the time.`
 
+  // `?q=` re-asks the complaint type on open; Ask reads it. No board is carried:
+  // the geocoder takes "lat,lon" or a ZIP, not "07 BRONX", so a link claiming a
+  // district would open on a citywide number wearing a local label.
   const link = `${window.location.origin}${window.location.pathname}#/ask?q=${encodeURIComponent(
     intake.complaint_type,
-  )}${community_board ? `&cb=${encodeURIComponent(community_board)}` : ''}`
+  )}`
 
   async function copy(kind: 'link' | 'text', value: string) {
     try {

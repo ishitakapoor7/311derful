@@ -11,6 +11,8 @@ import {
   USE_MOCK,
 } from '../api/client'
 import { getSessionId } from '../lib/session'
+import { isRecognitionSupported } from '../lib/speech'
+import { FALLBACK_LANGUAGES } from '../lib/constants'
 import {
   cacheResult,
   clearResultCache,
@@ -39,10 +41,9 @@ const DEMO_QUERIES: Record<string, { text: string; address: string | null }> = {
   clarify: { text: 'there is a noise problem near me', address: '10032' },
 }
 
-function readDemoKey(): string | null {
+function hashParams(): URLSearchParams {
   const hash = window.location.hash
-  const q = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : ''
-  return new URLSearchParams(q).get('demo')
+  return new URLSearchParams(hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : '')
 }
 
 /** Transcript keys only — never sent anywhere, never used as an entry id. */
@@ -85,9 +86,15 @@ export function Ask() {
       .then(setConfig)
       .catch(() =>
         // Voice is optional; a missing config must not block the text path.
+        //
+        // 'off' here would be the wrong default, though. It is the backend's
+        // way of saying "do not offer voice", and a failed call is not the
+        // backend saying anything -- while Web Speech runs entirely in the
+        // browser and needs no API at all. So an unreachable backend hides the
+        // mic only when the browser could not have done it anyway.
         setConfig({
-          voice_mode: 'off',
-          languages: [{ tag: 'en-US', label: 'English' }],
+          voice_mode: isRecognitionSupported() ? 'webspeech' : 'off',
+          languages: FALLBACK_LANGUAGES,
           llm_configured: true,
         }),
       )
@@ -133,19 +140,25 @@ export function Ask() {
     [refreshHistory],
   )
 
-  // Fire the demo query once, after config lands so voice_mode is settled.
-  const demoFired = useRef(false)
+  // Fire a demo or a shared query once, after config lands so voice_mode is
+  // settled. `?q=` is what ShareResult's permalink carries: the complaint type,
+  // re-asked as free text. It deliberately carries no location -- the geocoder
+  // takes "lat,lon" or a ZIP, not a community board, so a shared link answers
+  // citywide and the scope note under the result says so.
+  const autoFired = useRef(false)
   useEffect(() => {
-    if (demoFired.current || !config) return
-    const key = readDemoKey()
-    const demo = key ? DEMO_QUERIES[key] : null
-    if (!demo) return
-    demoFired.current = true
+    if (autoFired.current || !config) return
+    const params = hashParams()
+    const demoKey = params.get('demo')
+    const demo = demoKey ? DEMO_QUERIES[demoKey] : null
+    const shared = params.get('q')?.trim()
+    if (!demo && !shared) return
+    autoFired.current = true
     void run({
-      text: demo.text,
+      text: demo ? demo.text : (shared as string),
       source: 'text',
-      address: demo.address,
-      lang: 'en-US',
+      address: demo ? demo.address : null,
+      lang: demo ? 'en-US' : null,
       session_id: sessionId,
     })
   }, [config, run, sessionId])
@@ -220,7 +233,7 @@ export function Ask() {
       <div className={`ask${sidebarOpen ? ' with-sidebar' : ''}`}>
         <div className="ask-main stack">
           <div>
-            <p className="label">Describe the problem</p>
+            <p className="label">Describe_the_problem</p>
             <AskInput config={config} busy={busy} onSubmit={handleSubmit} />
           </div>
 

@@ -30,7 +30,9 @@ export function OutcomeBars({ outcomes, targeted = [] }: Props) {
               key={row.outcome}
               className={`bar-row${targeted.includes(row.outcome) ? ' is-targeted' : ''}`}
             >
-              <div className="bar-name">{outcomeLabel(row.outcome)}</div>
+              <div className="bar-name" data-group={group}>
+                {outcomeLabel(row.outcome)}
+              </div>
               <div className="bar-figs">
                 <span className="pct">{pct(row.share)}</span>
                 <br />

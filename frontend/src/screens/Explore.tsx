@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { BoardShare, ExploreResponse, ExploreRow } from '../types/api'
+import type { BoardsResponse, ExploreResponse, ExploreRow } from '../types/api'
 import { getBoards, getExplore } from '../api/client'
 import { count, pct, pctShort } from '../lib/format'
 import { outcomeLabel } from '../lib/outcomes'
 import { ErrorState, Loading } from '../components/States'
 import { BoardMap } from '../components/BoardMap'
-import { Est, ProvenanceFooter, isVerifiedType } from '../components/Provenance'
+import { ProvenanceFooter } from '../components/Provenance'
 
 type SortKey = 'complaint_type' | 'agency' | 'total' | 'resolved_share'
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
 
 export function Explore() {
   const [data, setData] = useState<ExploreResponse | null>(null)
@@ -18,7 +23,8 @@ export function Explore() {
   const [query, setQuery] = useState('')
 
   const [mapType, setMapType] = useState('Noise - Residential')
-  const [boards, setBoards] = useState<BoardShare[]>([])
+  const [boardData, setBoardData] = useState<BoardsResponse | null>(null)
+  const [boardsLoading, setBoardsLoading] = useState(true)
   const [selectedBoard, setSelectedBoard] = useState<string | null>(null)
 
   useEffect(() => {
@@ -28,18 +34,33 @@ export function Explore() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    getBoards(mapType)
+    // Until /api/explore/boards exists the map is one forecast per district, so
+    // switching type mid-flight has to stop the previous fan-out rather than
+    // just ignore it -- and the districts already answered are painted as they
+    // arrive instead of held back behind a spinner.
+    const controller = new AbortController()
+    setBoardData(null)
+    setBoardsLoading(true)
+    getBoards(mapType, {
+      signal: controller.signal,
+      onPartial: (partial) => {
+        if (!controller.signal.aborted) setBoardData(partial)
+      },
+    })
       .then((r) => {
-        if (!cancelled) setBoards(r.rows)
+        if (!controller.signal.aborted) setBoardData(r)
       })
       .catch(() => {
-        if (!cancelled) setBoards([])
+        // An empty result and a failed one read the same to the user: no map.
+        if (!controller.signal.aborted) setBoardData({ complaint_type: mapType, rows: [] })
       })
-    return () => {
-      cancelled = true
-    }
+      .finally(() => {
+        if (!controller.signal.aborted) setBoardsLoading(false)
+      })
+    return () => controller.abort()
   }, [mapType])
+
+  const boards = boardData?.rows ?? []
 
   const rows = useMemo(() => {
     if (!data) return []
@@ -86,8 +107,14 @@ export function Explore() {
 
   return (
     <div className="wrap" style={{ padding: '36px 20px 80px' }}>
-      <p className="label">Citywide</p>
-      <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', maxWidth: '18ch' }}>
+      <p className="label">Citywide_outcomes</p>
+      <h1
+        style={{
+          fontSize: 'clamp(32px, 5.6vw, 52px)',
+          letterSpacing: '-0.035em',
+          maxWidth: '18ch',
+        }}
+      >
         Where complaints go to die
       </h1>
 
@@ -114,7 +141,7 @@ export function Explore() {
           <div className="section">
             <div className="map-head">
               <p className="label" style={{ margin: 0 }}>
-                Resolved share by community board <Est what="per-board shares" />
+                Resolved_share_by_community_board
               </p>
               <select
                 value={mapType}
@@ -132,14 +159,36 @@ export function Explore() {
               </select>
             </div>
 
-            <BoardMap shares={boards} selected={selectedBoard} onSelect={setSelectedBoard} />
+            {boards.length === 0 ? (
+              boardsLoading ? (
+                <div className="map-skeleton" aria-label="Loading the map" />
+              ) : (
+                <div className="note">
+                  No per-board figures for {mapType}. The map is one real forecast per community
+                  district, so it needs the API running — offline, or with the backend down, there
+                  is nothing honest to draw here.
+                </div>
+              )
+            ) : (
+              <>
+                <BoardMap shares={boards} selected={selectedBoard} onSelect={setSelectedBoard} />
+                <p className="mono muted" style={{ marginTop: 10, fontSize: 12 }}>
+                  {boardsLoading
+                    ? `${boards.length} of 59 community districts…`
+                    : `${boards.length} of 59 community districts`}
+                  {boardData?.month ? ` · ${MONTHS[boardData.month - 1]} complaints` : ''} ·{' '}
+                  districts with fewer than {boardData?.min_sample ?? 30} classified records are
+                  left blank rather than coloured from noise.
+                </p>
+              </>
+            )}
           </div>
 
           {/* ---- table ---- */}
           <div className="section">
             <div className="table-head">
               <p className="label" style={{ margin: 0 }}>
-                All complaint types
+                All_complaint_types
               </p>
               <input
                 type="search"
@@ -175,10 +224,7 @@ export function Explore() {
                 <tbody>
                   {rows.map((row: ExploreRow) => (
                     <tr key={`${row.complaint_type}-${row.agency}`}>
-                      <td style={{ fontWeight: 700 }}>
-                        {row.complaint_type}{' '}
-                        {!isVerifiedType(row.complaint_type) && <Est what="this row" />}
-                      </td>
+                      <td style={{ fontWeight: 700 }}>{row.complaint_type}</td>
                       <td className="muted">{row.agency}</td>
                       <td className="num">{count(row.total)}</td>
                       <td className="num">
@@ -217,8 +263,12 @@ export function Explore() {
           </div>
 
           <ProvenanceFooter
-            verified={['4 complaint types fully computed']}
-            estimated={['per-board map shares', 'the remaining complaint-type rows']}
+            totalRecords={data.total_records}
+            verified={[
+              `${data.rows.length} complaint types`,
+              `${pct(data.classified_share, 0)} classifier coverage`,
+              ...(boards.length ? [`${boards.length} community districts on the map`] : []),
+            ]}
           />
         </>
       )}

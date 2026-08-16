@@ -3,6 +3,7 @@ import { Header } from './components/Header'
 import { Landing } from './screens/Landing'
 import { Ask } from './screens/Ask'
 import { Explore } from './screens/Explore'
+import { Footer } from './components/Footer'
 
 export default function App() {
   const route = useRoute()
@@ -15,6 +16,7 @@ export default function App() {
         {route === 'ask' && <Ask />}
         {route === 'explore' && <Explore />}
       </main>
+      <Footer />
     </>
   )
 }
