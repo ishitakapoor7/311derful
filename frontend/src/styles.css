@@ -484,33 +484,61 @@ button {
   border-bottom: 1px solid var(--rule);
 }
 
-.lp-skyline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+/* ---------- landing locator map ----------
+   One ink, no ramp. The Explore choropleth encodes resolved share in colour;
+   this one encodes nothing, so it must not look like it does. */
+
+.citymap {
+  margin: 0 0 18px;
+}
+
+.citymap-svg {
   width: 100%;
-  height: min(58%, 340px);
-  fill: var(--paper-3);
-  pointer-events: none;
+  height: auto;
+  display: block;
+}
+
+.citymap-district {
+  fill: var(--ink);
+  stroke: var(--paper);
+  stroke-width: 1.1;
+}
+
+/* Nobody lives there and 311 reports nothing against it, so it is drawn as
+   absence rather than as another district. */
+.citymap-park {
+  fill: none;
+  stroke: var(--rule-2);
+  stroke-width: 0.9;
+}
+
+.citymap-caption {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  margin-top: 10px;
 }
 
 .lp-hero-in {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.62fr);
-  column-gap: 48px;
-  row-gap: 22px;
-  align-items: start;
-  padding-top: 64px;
-  padding-bottom: 80px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.72fr);
+  column-gap: 56px;
+  row-gap: 32px;
+  align-items: center;
+  padding-top: 56px;
+  padding-bottom: 72px;
+}
+
+.lp-left {
+  min-width: 0;
 }
 
 /* The thesis, stated once in the machine voice before the headline says it in
    the product's own. */
 .lp-eyebrow {
-  grid-column: 1 / -1;
-  margin: 0;
+  margin: 0 0 20px;
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 500;
@@ -519,11 +547,13 @@ button {
 }
 
 .lp-headline {
-  grid-column: 1 / -1;
-  font-size: clamp(40px, 7.4vw, 78px);
+  /* Sized against the left column rather than the viewport, so "scientifically."
+     stays on one line beside the map instead of breaking mid-word. */
+  font-size: clamp(38px, 6.4vw, 68px);
   font-weight: 700;
   letter-spacing: -0.04em;
   max-width: 14ch;
+  margin-bottom: 22px;
 }
 
 /* The one accented phrase in the headline — the claim the page is making. */
@@ -532,12 +562,8 @@ button {
   color: var(--accent);
 }
 
-.lp-copy {
-  grid-column: 1;
-}
-
-.lp-copy .lede {
-  margin-bottom: 22px;
+.lp-left .lede {
+  margin-bottom: 26px;
 }
 
 .lp-actions {
@@ -559,8 +585,11 @@ button {
    Ruled like an instrument readout rather than boxed like a card, so it reads
    as the machine reporting its own inputs. */
 
+.lp-right {
+  min-width: 0;
+}
+
 .lp-telemetry {
-  grid-column: 2;
   border-top: 1px solid var(--rule-2);
   border-bottom: 1px solid var(--rule);
   padding: 14px 0 12px;
@@ -681,11 +710,14 @@ button {
     padding-bottom: 48px;
   }
 
-  .lp-eyebrow,
-  .lp-headline,
-  .lp-copy,
-  .lp-telemetry {
+  .lp-left,
+  .lp-right {
     grid-column: 1;
+  }
+
+  /* Stacked, the map must not push the readout off the first screen. */
+  .citymap {
+    max-width: 320px;
   }
 }
 

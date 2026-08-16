@@ -12,6 +12,7 @@ import {
   TOTAL_RECORDS,
 } from '../lib/constants'
 import { GapBar } from '../components/GapBar'
+import { CityMap } from '../components/CityMap'
 
 /**
  * One screen. Its only job is to make someone believe there is a real finding
@@ -31,50 +32,6 @@ function heroRow(rows: ExploreRow[]): ExploreRow {
   const common = [...rows].sort((a, b) => b.total - a.total).slice(0, 12)
   if (common.length === 0) return HERO_FALLBACK
   return common.reduce((worst, r) => (r.resolved_share < worst.resolved_share ? r : worst))
-}
-
-const SKYLINE_W = 1200
-const SKYLINE_H = 340
-
-/**
- * The silhouette behind the headline is not ornament: one bar per complaint
- * type, height proportional to how often that type actually ends fixed. So the
- * shape of the skyline *is* the finding -- short bars everywhere.
- *
- * It renders only once /api/explore answers. With no data there is no drawing,
- * because a skyline of invented heights is exactly the kind of decoration this
- * project refuses. Hidden from assistive tech: the readable version of this
- * same data is the telemetry block beside it and the Explore table.
- */
-function Skyline({ rows }: { rows: ExploreRow[] }) {
-  if (rows.length === 0) return null
-
-  const bars = [...rows].sort((a, b) => b.total - a.total).slice(0, 24)
-  const slot = SKYLINE_W / bars.length
-
-  return (
-    <svg
-      className="lp-skyline"
-      viewBox={`0 0 ${SKYLINE_W} ${SKYLINE_H}`}
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      focusable="false"
-    >
-      {bars.map((r, i) => {
-        // Floored so a near-zero share still reads as a building, not a gap.
-        const h = Math.max(28, r.resolved_share * SKYLINE_H)
-        return (
-          <rect
-            key={`${r.complaint_type}-${r.agency}`}
-            x={i * slot + slot * 0.14}
-            y={SKYLINE_H - h}
-            width={slot * 0.72}
-            height={h}
-          />
-        )
-      })}
-    </svg>
-  )
 }
 
 export function Landing() {
@@ -98,16 +55,18 @@ export function Landing() {
   return (
     <div className="lp">
       <section className="lp-hero">
-        <Skyline rows={data?.rows ?? []} />
-
         <div className="wrap lp-hero-in">
-          <p className="lp-eyebrow">Service_outcomes — not complaint_volume</p>
+          {/* Each column is one grid item. Letting the six blocks be grid items
+              in their own right makes the taller column stretch the other's
+              rows, which opens a hole the height of the map between the
+              headline and the copy. */}
+          <div className="lp-left">
+            <p className="lp-eyebrow">Service_outcomes — not complaint_volume</p>
 
-          <h1 className="lp-headline">
-            Fix your city <em>scientifically.</em>
-          </h1>
+            <h1 className="lp-headline">
+              Fix your city <em>scientifically.</em>
+            </h1>
 
-          <div className="lp-copy">
             <p className="lede">
               Describe a problem in any language. Find out what actually happens to complaints like
               yours — what changes the odds, and a draft ready to submit.
@@ -126,18 +85,22 @@ export function Landing() {
             </div>
           </div>
 
-          {/* The instrument panel: what was read, over what window, and how much
-              of it the classifier could actually account for. */}
-          <aside className="lp-telemetry">
-            <div className="lp-tel-row">
-              <span className="lp-tel-key">RECORDS:</span>
-              <span className="lp-tel-val">{count(totalRecords)}</span>
+          <aside className="lp-right">
+            <CityMap />
+
+            {/* The instrument panel: what was read, over what window, and how
+                much of it the classifier could actually account for. */}
+            <div className="lp-telemetry">
+              <div className="lp-tel-row">
+                <span className="lp-tel-key">RECORDS:</span>
+                <span className="lp-tel-val">{count(totalRecords)}</span>
+              </div>
+              <div className="lp-tel-row">
+                <span className="lp-tel-key">WINDOW:</span>
+                <span className="lp-tel-val">{DATA_WINDOW}</span>
+              </div>
+              <div className="lp-tel-foot">CLASSIFIER_COVERAGE {coverage}</div>
             </div>
-            <div className="lp-tel-row">
-              <span className="lp-tel-key">WINDOW:</span>
-              <span className="lp-tel-val">{DATA_WINDOW}</span>
-            </div>
-            <div className="lp-tel-foot">CLASSIFIER_COVERAGE {coverage}</div>
           </aside>
         </div>
       </section>
