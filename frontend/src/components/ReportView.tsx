@@ -7,6 +7,7 @@ import { OutcomeBars } from './OutcomeBars'
 import { ProvenanceChip, ScopeNote } from './ProvenanceChip'
 import { Tips } from './Tips'
 import { CloseTheLoop } from './CloseTheLoop'
+import { FormFields } from './FormFields'
 import { ProvenanceFooter } from './Provenance'
 import { ShareResult } from './ShareResult'
 
@@ -161,6 +162,17 @@ export function ReportView({ response }: { response: AskResponse }) {
         </div>
       )}
 
+      {/* ---- what the form will ask ----
+          Immediately before the draft: read the questions, gather the answers,
+          then copy the draft and open 311. Hides itself when the complaint type
+          is not in the recovered form map. */}
+      {response.form_fields?.length > 0 && (
+        <div className="section">
+          <p className="label">What 311 will ask you</p>
+          <FormFields fields={response.form_fields} />
+        </div>
+      )}
+
       {/* ---- close the loop ---- */}
       <div className="section">
         <p className="label">File it, then check back</p>
@@ -178,6 +190,9 @@ export function ReportView({ response }: { response: AskResponse }) {
           'this outcome split and every count',
           'median days to close, per outcome',
           'sample size and confidence tier',
+          ...(response.form_fields?.length
+            ? ['the intake questions, recovered from column fill patterns']
+            : []),
         ]}
         // The model phrases; it never produces a figure. Offline the prose ships
         // with the fixtures, live it is written per request in the caller's

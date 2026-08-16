@@ -153,6 +153,30 @@ export interface Advice {
   caveat: string | null
 }
 
+export interface FormOption {
+  value: string
+  /** How often filers pick this. Descriptive, NOT a recommendation. */
+  share: number
+}
+
+/**
+ * A question 311's intake form asks for this complaint type, recovered from
+ * which dataset columns the type populates rather than scraped off the portal.
+ */
+export interface FormField {
+  /** Dataset column it was recovered from. */
+  column: string
+  question: string
+  /** False when the field is conditional on an earlier answer — "may ask". */
+  always: boolean
+  fill_rate: number
+  /**
+   * Absent/null for free-text fields and fields with a single real value. That
+   * is not an empty dropdown, and must never render as one.
+   */
+  options?: FormOption[] | null
+}
+
 export interface AskResponse {
   intake: IntakeResult
   /** Null when the intake needs a clarifying question answered first. */
@@ -161,6 +185,12 @@ export interface AskResponse {
   community_board: string | null
   /** False when the location was inferred rather than resolved exactly. */
   location_exact: boolean
+  /**
+   * What 311 will ask when this complaint is filed. Empty means the complaint
+   * type is not in the map -- only the 60 busiest are -- and never that 311 asks
+   * nothing, so the panel is hidden rather than rendered empty.
+   */
+  form_fields: FormField[]
 }
 
 // ---------------------------------------------------------------------------
