@@ -157,6 +157,15 @@ navigator.geolocation?.getCurrentPosition(
 // with it.
 let listening = false, recognition = null, vapi = null;
 
+// Set while we are deliberately hanging up, so the ejection error that follows
+// is not reported as a failure.
+let endingByUs = false;
+
+// How long a speaker has to stay quiet before we treat the utterance as
+// finished. Long enough to survive a mid-sentence breath, short enough that the
+// pause does not read as the app having missed the question.
+const SILENCE_MS = 1800;
+
 // Same reason this sits above the boot block: `await initVapi()` suspends the
 // whole module body, so the awaited continuation runs while every `const`
 // below it is still in the temporal dead zone.
@@ -285,29 +294,56 @@ async function initVapi() {
       vapi.send({ type: "control", control: "mute-assistant" });
     });
 
-    // The SDK types this event as `any`, so the field names below are read
-    // defensively rather than destructured: a shape we half-recognise should
-    // still produce a transcript, not silence. Anything we reject entirely is
-    // still in window.__vapiLog above.
-    vapi.on("message", (m) => {
-      if (m?.type !== "transcript") return;
-      const role = m.role ?? m.speaker;
-      if (role && role !== "user") return;             // assistant echo, ignore
-      const text = m.transcript ?? m.text ?? m.transcriptText;
-      if (!text) return;
+    // Shape confirmed against a live call:
+    //   {type:'transcript', role:'user', transcriptType:'partial'|'final', transcript}
+    //
+    // `final` does NOT mean "done talking" -- the transcriber emits one at every
+    // endpoint, so a single sentence arrives as several. A real call produced
+    // finals of "Okay. Um." / "He." / "Do." from one continuous utterance.
+    // Submitting on the first final therefore asked the backend about "Okay. Um."
+    // and, because say() ends the call, threw the rest of the sentence away.
+    //
+    // So: accumulate finals and submit only after the speaker has actually
+    // stopped. Silence is the end-of-thought signal; `final` is just a comma.
+    let utterance = [];
+    let submitTimer = null;
 
-      // Treat anything not explicitly partial as final. Getting this backwards
-      // in the partial direction means the answer never fires; in the final
-      // direction it just asks a beat early.
-      if ((m.transcriptType ?? m.transcript_type) === "partial") {
-        $("interim").textContent = text;
+    const submitLater = () => {
+      clearTimeout(submitTimer);
+      submitTimer = setTimeout(() => {
+        const full = utterance.join(" ").replace(/\s+/g, " ").trim();
+        utterance = [];
+        if (!full) return;
+        $("interim").textContent = "";
+        $("text").value = full;
+        ask();
+      }, SILENCE_MS);
+    };
+
+    const resetUtterance = () => { clearTimeout(submitTimer); utterance = []; };
+
+    vapi.on("message", (m) => {
+      if (m?.type !== "transcript" || m.role !== "user" || !m.transcript) return;
+
+      if (m.transcriptType === "partial") {
+        // Still talking: hold off the submit and show the sentence so far.
+        clearTimeout(submitTimer);
+        $("interim").textContent = [...utterance, m.transcript].join(" ");
         return;
       }
-      $("interim").textContent = "";
-      $("text").value = text;
-      ask();                         // transcript is final: go straight to the answer
+      utterance.push(m.transcript);
+      $("interim").textContent = utterance.join(" ");
+      submitLater();
     });
-    vapi.on("error", (e) => { $("status").textContent = `Vapi: ${e?.message ?? e}`; setListening(false); });
+
+    vapi.on("error", (e) => {
+      // Ending a call ejects us from the underlying Daily room, which surfaces
+      // as a daily-error immediately afterwards. That is the call working, not
+      // failing, and it must not overwrite the answer on screen.
+      if (endingByUs) return;
+      $("status").textContent = `Vapi: ${e?.message ?? e}`;
+      setListening(false);
+    });
 
     // Billing guard: if someone opens the mic and never speaks, the call would
     // sit open and bill by the minute. Hang up after 30s of silence.
@@ -317,12 +353,17 @@ async function initVapi() {
       idleTimer = setTimeout(() => { if (listening) vapi.stop(); }, 30_000);
     };
     vapi.on("speech-start", resetIdle);
-    vapi.on("call-end", () => { clearTimeout(idleTimer); setListening(false); });
+    vapi.on("call-start", () => { endingByUs = false; resetUtterance(); });
+    vapi.on("call-end", () => {
+      clearTimeout(idleTimer);
+      resetUtterance();              // a half-heard sentence must not leak into the next call
+      setListening(false);
+    });
 
     if (await micBlocked()) $("status").textContent = MIC_BLOCKED_MSG;
 
     $("mic").onclick = async () => {
-      if (listening) return vapi.stop();
+      if (listening) { endingByUs = true; return vapi.stop(); }
       if (await micBlocked()) return void ($("status").textContent = MIC_BLOCKED_MSG);
       setListening(true);
       resetIdle();
@@ -357,7 +398,10 @@ function speak(text, lang) {
   // open call, and one question is one short exchange -- without this the
   // meter runs until someone remembers to press stop, which on demo day is
   // "never". Each ask becomes a ~30s call instead of an open mic.
-  if (CONFIG.voice_mode === "vapi" && vapi) return void vapi.say(text, true);
+  if (CONFIG.voice_mode === "vapi" && vapi) {
+    endingByUs = true;               // suppress the ejection error that follows
+    return void vapi.say(text, true);
+  }
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
