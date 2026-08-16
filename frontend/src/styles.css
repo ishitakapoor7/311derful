@@ -120,8 +120,10 @@ button {
 
 /* ---------- type ---------- */
 
-/* Section labels are machine-voice: mono, snake_case, no shouting. The
-   underscores in the copy carry the register, so no text-transform here. */
+/* Section labels are machine-voice: mono, small, no shouting. The typeface and
+   the letter-spacing carry the register -- these used to be snake_case as well,
+   which read as a variable name rather than a heading. No text-transform: the
+   copy is written in the case it should render in. */
 .label {
   font-family: var(--mono);
   font-size: 11.5px;
@@ -1300,6 +1302,90 @@ button {
   text-transform: uppercase;
   color: var(--ink-3);
   margin-top: 5px;
+}
+
+/* ---------- disclosure ----------
+   Supporting detail, folded until asked for. Deliberately quiet: a marker, a
+   mono line, no box. It should read as a way further in, not as another card
+   competing with the result. */
+
+.disclosure {
+  border-top: 1px solid var(--rule);
+}
+
+/* The last bar already draws a rule, so the disclosure under it must not draw a
+   second one directly on top. */
+.bars + .disclosure {
+  border-top: 0;
+}
+
+.disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.12s ease;
+}
+
+.disclosure > summary:hover {
+  color: var(--ink);
+}
+
+.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* The marker is drawn rather than inherited so it is identical across browsers
+   and rotates on open. */
+.disclosure > summary::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.15s ease;
+}
+
+.disclosure[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.disclosure > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.disclosure-body {
+  padding: 2px 0 18px;
+}
+
+/* Bars carried inside a disclosure keep their own top rule from the list above,
+   so they do not need a second one. */
+.disclosure-body .bars {
+  border-top: 0;
+}
+
+/* The one-line finding above the chart — what used to be its own callout. */
+.bars-lead {
+  margin: 0 0 16px;
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 62ch;
+}
+
+.bars-lead strong {
+  color: var(--failure-ink);
+}
+
+.report-more {
+  margin-top: 30px;
 }
 
 /* ---------- form fields ----------

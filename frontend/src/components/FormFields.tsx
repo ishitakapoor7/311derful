@@ -22,7 +22,7 @@ export function FormFields({ fields }: { fields: FormField[] | undefined }) {
   return (
     <div className="ff">
       <p className="ff-basis">
-        Recovered from how these complaints are usually filed — not an official form.
+        From how these complaints are usually filed — not an official form.
       </p>
 
       <ol className="ff-list">
@@ -69,9 +69,7 @@ export function FormFields({ fields }: { fields: FormField[] | undefined }) {
       </ol>
 
       <p className="ff-foot">
-        Percentages are how often filers picked each answer — what is typical, not evidence that
-        picking it helps. Which answer changes the outcome is not something we have measured. Every
-        option shown is an answer someone actually gave; 311's own placeholders are filtered out.
+        Percentages are how often filers picked each answer — what's typical, not what works.
       </p>
     </div>
   )
