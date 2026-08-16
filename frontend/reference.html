@@ -157,6 +157,30 @@ navigator.geolocation?.getCurrentPosition(
 // with it.
 let listening = false, recognition = null, vapi = null;
 
+// Same reason this sits above the boot block: `await initVapi()` suspends the
+// whole module body, so the awaited continuation runs while every `const`
+// below it is still in the temporal dead zone.
+const MIC_BLOCKED_MSG =
+  "Microphone is blocked for this site. Click the icon at the left of the address bar → " +
+  "Microphone → Allow, then reload. You can still type.";
+
+/**
+ * True if this origin has a stored "Block" for the microphone.
+ *
+ * Worth its own check because a denied permission is indistinguishable from a
+ * working mic that heard nothing: Chrome shows no prompt, getUserMedia rejects
+ * inside the SDK, and the call opens deaf. The permission is per-origin
+ * *including the port*, so allowing :8000 does nothing for :8091 -- which is
+ * exactly how you end up blocked without remembering blocking anything.
+ */
+async function micBlocked() {
+  try {
+    return (await navigator.permissions.query({ name: "microphone" })).state === "denied";
+  } catch {
+    return false;              // Firefox/Safari don't expose this query; let the call try.
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Boot: the backend decides which voice path is live.
 // ---------------------------------------------------------------------------
@@ -207,8 +231,11 @@ function initWebSpeech() {
   };
   recognition.onend = () => setListening(false);
 
-  $("mic").onclick = () => {
+  micBlocked().then((b) => { if (b) $("status").textContent = MIC_BLOCKED_MSG; });
+
+  $("mic").onclick = async () => {
     if (listening) return recognition.stop();
+    if (await micBlocked()) return void ($("status").textContent = MIC_BLOCKED_MSG);
     recognition.lang = $("lang").value;
     recognition.start();
     setListening(true);
@@ -233,6 +260,23 @@ async function initVapi() {
     vapi = new Vapi(CONFIG.vapi_public_key);
     $("mic").hidden = false;
 
+    // This file is a <script type="module">, so everything here is module-scoped
+    // and invisible to the devtools console -- typing `vapi` there gets you
+    // "vapi is not defined" whether or not the SDK loaded, which makes the
+    // console useless for diagnosing voice. Hang the handle on window so it
+    // isn't, and keep a log of every event so a failed attempt leaves evidence
+    // instead of silence.
+    window.__vapi = vapi;
+    window.__vapiLog = [];
+    for (const ev of ["call-start", "call-end", "speech-start", "speech-end",
+                      "volume-level", "message", "error"]) {
+      vapi.on(ev, (payload) => {
+        if (ev === "volume-level") return;             // fires ~10x/sec, drowns the rest
+        window.__vapiLog.push({ ev, payload });
+        console.log("[vapi]", ev, payload);
+      });
+    }
+
     // Silence the assistant's own LLM the moment the call connects. Without
     // this it answers in its own words alongside our say(), and its answer
     // would not be grounded in the cube. 'mute-assistant' is a documented
@@ -241,18 +285,27 @@ async function initVapi() {
       vapi.send({ type: "control", control: "mute-assistant" });
     });
 
+    // The SDK types this event as `any`, so the field names below are read
+    // defensively rather than destructured: a shape we half-recognise should
+    // still produce a transcript, not silence. Anything we reject entirely is
+    // still in window.__vapiLog above.
     vapi.on("message", (m) => {
-      // NOTE: the SDK types this event as `any` — the transcript shape below
-      // matches Vapi's documented server events but is NOT type-guaranteed.
-      // First thing to check if voice input silently does nothing:
-      //   vapi.on("message", console.log)
-      if (m?.type !== "transcript" || m?.role !== "user") return;
-      if (m.transcriptType === "partial") $("interim").textContent = m.transcript;
-      if (m.transcriptType === "final") {
-        $("interim").textContent = "";
-        $("text").value = m.transcript;
-        ask();                       // transcript is final: go straight to the answer
+      if (m?.type !== "transcript") return;
+      const role = m.role ?? m.speaker;
+      if (role && role !== "user") return;             // assistant echo, ignore
+      const text = m.transcript ?? m.text ?? m.transcriptText;
+      if (!text) return;
+
+      // Treat anything not explicitly partial as final. Getting this backwards
+      // in the partial direction means the answer never fires; in the final
+      // direction it just asks a beat early.
+      if ((m.transcriptType ?? m.transcript_type) === "partial") {
+        $("interim").textContent = text;
+        return;
       }
+      $("interim").textContent = "";
+      $("text").value = text;
+      ask();                         // transcript is final: go straight to the answer
     });
     vapi.on("error", (e) => { $("status").textContent = `Vapi: ${e?.message ?? e}`; setListening(false); });
 
@@ -266,11 +319,23 @@ async function initVapi() {
     vapi.on("speech-start", resetIdle);
     vapi.on("call-end", () => { clearTimeout(idleTimer); setListening(false); });
 
-    $("mic").onclick = () => {
+    if (await micBlocked()) $("status").textContent = MIC_BLOCKED_MSG;
+
+    $("mic").onclick = async () => {
       if (listening) return vapi.stop();
-      vapi.start(CONFIG.vapi_assistant_id);
+      if (await micBlocked()) return void ($("status").textContent = MIC_BLOCKED_MSG);
       setListening(true);
       resetIdle();
+      try {
+        // start() is async and rejects on a bad assistant id, exhausted
+        // credits, or a denied mic. Unawaited, every one of those failures
+        // looked identical to a working call that heard nothing.
+        await vapi.start(CONFIG.vapi_assistant_id);
+      } catch (err) {
+        console.error("[vapi] start failed", err);
+        $("status").textContent = `Vapi couldn't start the call: ${err?.message ?? err}. You can still type.`;
+        setListening(false);
+      }
     };
   } catch (err) {
     // Never let a voice failure take the page with it.
