@@ -94,7 +94,7 @@ export function AskInput({ config, busy, onSubmit }: Props) {
 
   return (
     <div>
-      <div className="field">
+      <div className="field card card-outer">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}

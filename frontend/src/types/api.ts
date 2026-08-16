@@ -3,13 +3,14 @@
  *
  * `backend/app/models.py` is the source of truth, and localhost:8000/docs serves
  * live OpenAPI. Verified against the backend as of commit e1d6715 -- /api/ask,
- * /api/config, /api/history and /api/explore all exist and these shapes match.
- * To regenerate rather than hand-maintain:
+ * /api/config, /api/forecast, /api/history and /api/explore all exist and these
+ * shapes match. To regenerate rather than hand-maintain:
  *
  *     npx openapi-typescript http://localhost:8000/openapi.json -o src/types/api.ts
  *
- * The one thing here the backend does NOT serve is /api/explore/boards, which
- * powers the map. It is marked BACKEND-PENDING below.
+ * The one thing here the backend does NOT serve is /api/explore/boards. Until it
+ * does, `getBoards` composes the map out of real per-district /api/forecast
+ * calls; see the note on BoardsResponse below.
  */
 
 // ---------------------------------------------------------------------------
@@ -212,21 +213,33 @@ export interface ExploreResponse {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/explore/boards?complaint_type=…                 (BACKEND-PENDING)
+// Per-community-board shares — the Explore map.
+//
+// Served by GET /api/explore/boards?complaint_type=… when the backend has it.
+// Until then `api/client.ts` builds the same shape from one /api/forecast call
+// per district, which is why `month` exists: a board-level forecast is always
+// scoped to a month, and the map has to say so.
 // ---------------------------------------------------------------------------
 
 export interface BoardShare {
   /** Matches `community_board`, e.g. "12 MANHATTAN". */
   board: string
   resolved_share: number
+  /** Classified records the share is computed over. */
   total: number
 }
 
 export interface BoardsResponse {
   complaint_type: string
+  /**
+   * Districts with fewer than `min_sample` records are absent rather than
+   * carrying a share: a choropleth gives every polygon equal visual weight, so
+   * colouring one from nine records asserts a finding the data cannot support.
+   */
   rows: BoardShare[]
-  /** True when these are computed from the dataset rather than estimated. */
-  verified: boolean
+  /** 1-12 when the figures cover a single month; null/absent when all months. */
+  month?: number | null
+  min_sample?: number
 }
 
 // ---------------------------------------------------------------------------

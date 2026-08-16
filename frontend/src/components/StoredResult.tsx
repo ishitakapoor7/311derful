@@ -22,7 +22,7 @@ export function StoredResult({
   onRerun: () => void
 }) {
   return (
-    <div>
+    <div className="card card-outer report-card">
       <p className="label">
         From history · {relativeTime(entry.created_at)}
         {entry.community_board ? ` · Community Board ${entry.community_board}` : ''}

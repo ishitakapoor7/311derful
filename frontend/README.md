@@ -11,17 +11,23 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
-Runs against a mock backend by default, so it works with nothing else running.
-`/api` is proxied to `http://localhost:8000` in dev.
+**The backend must be running on `http://localhost:8000`**, which `/api` is proxied
+to in dev. Every figure on screen is a query against it; nothing is invented
+locally. With the backend down, each screen says so — the landing page falls back
+to the last measured figures in `src/lib/constants.ts` and the map goes blank
+rather than drawing something plausible.
 
-## Switching to the real backend
+## Running with no backend at all
 
 ```bash
 cp .env.example .env.local
-# set VITE_USE_MOCK=false
+# set VITE_USE_MOCK=true
 ```
 
-Nothing else changes — `src/api/client.ts` is the only file that knows.
+`src/api/client.ts` is the only file that knows. The offline client serves the
+committed fixtures — real responses out of the cube — and returns nothing for the
+things it cannot compute, so the Explore table shows only the six verified
+complaint types and the map is replaced by a note.
 
 Serving it from the backend needs a build first:
 
@@ -38,31 +44,45 @@ secure-context requirement for microphone access with no HTTPS setup.
 
 ## Where the numbers come from
 
-`/api/ask` in mock mode serves the four **real** responses committed at
-`frontend/fixtures/sample-responses.json` — every outcome split, count, median and
-sample size in them came out of the 22.1M-row cube. Only the `advice` prose is
-illustrative; the live API writes it per request in the caller's language.
+Nothing on screen is estimated. Every share, count and median is a cube lookup
+served by the backend; the model writes only prose, and the provenance footer on
+each screen names which is which.
 
-Still invented, and marked `[placeholder- replace with real data]` wherever it
-renders:
+| On screen | Source |
+|---|---|
+| The report — split, counts, medians, tier | `POST /api/ask` |
+| Narrative, tips, draft complaint | `POST /api/ask`, phrased by the model from those numbers |
+| Explore table, record count, coverage | `GET /api/explore` |
+| Landing hero and totals | `GET /api/explore`; falls back to `src/lib/constants.ts` when the API is down |
+| Explore map, per district | `POST /api/forecast`, once per community district (see below) |
 
-- `/api/explore` rows beyond the six verified complaint types
-- every per-board share on the Explore map (there is no `/api/explore/boards`)
+The two things this app will not do: put a number on screen that the backend did
+not produce, and imply a figure is about a place or period it is not.
 
-A provenance banner sits under any estimated figure for as long as
-`VITE_USE_MOCK` is on. `src/api/mock.ts` can be deleted once the backend is the
-only source — nothing outside `src/api/` imports from it.
+## The map, until `/api/explore/boards` exists
+
+The backend serves no per-board endpoint, so `getBoards` in `src/api/client.ts`
+builds the map out of one real `POST /api/forecast` per community district — 59
+calls, batched, painted as they land, cached per complaint type. Two consequences
+are printed under the map rather than hidden:
+
+- a board-level forecast always carries a month filter, so the map is **one
+  month**, not the whole window
+- a district whose cell is thin makes the forecast ladder widen to borough or
+  citywide. Those answers are about a different geography, so they are dropped and
+  the district is **left blank** — as are districts under 30 classified records
+
+`getBoards` probes `GET /api/explore/boards?complaint_type=…` once per page load
+first. When the backend ships it — returning `{complaint_type, rows[{board,
+resolved_share, total}], month, min_sample}` — the fan-out stops being used, the
+map covers all months, and no frontend change is needed.
 
 ## Backend status
 
-Everything this app calls exists in `backend/app/models.py` and answers, with one
-exception:
-
-- `GET /api/explore/boards?complaint_type=…` — powers the Explore map. Marked
-  `BACKEND-PENDING` in `src/types/api.ts`; the mock estimates it.
-
-`/api/ask`, `/api/config`, `/api/history` (GET and both DELETEs),
-`forecast.unclassified_count` and `session_id` on the ask request are all live.
+Everything else this app calls exists in `backend/app/models.py` and answers:
+`/api/ask`, `/api/config`, `/api/forecast`, `/api/explore`, `/api/history` (GET
+and both DELETEs), `forecast.unclassified_count`, and `session_id` on the ask
+request.
 
 ## Voice
 
@@ -93,7 +113,7 @@ this browser has never seen — a session opened on another device — falls bac
 
 ```
 src/
-  api/        client.ts (fetch + mock switch), fixtures.ts (the real four), mock.ts
+  api/        client.ts (fetch, map fan-out), fixtures.ts (the real four), mock.ts (offline)
   components/ AskInput, OutcomeBars, ReportView, ChatView, HistorySidebar, …
   lib/        router, speech, outcomes, format, session, constants, resultCache
   screens/    Landing, Ask, Explore

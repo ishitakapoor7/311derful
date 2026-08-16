@@ -12,14 +12,22 @@ export function Header({ route }: { route: Route }) {
         >
           <Logo size={28} />
         </button>
-        <nav className="nav">
-          <button onClick={() => navigate('ask')} aria-current={route === 'ask'}>
-            Ask
-          </button>
-          <button onClick={() => navigate('explore')} aria-current={route === 'explore'}>
-            Explore
-          </button>
-        </nav>
+        <div className="header-end">
+          <nav className="nav">
+            <button onClick={() => navigate('explore')} aria-current={route === 'explore'}>
+              Explore
+            </button>
+          </nav>
+
+          {/* The single way into the tool. The nav is for reading about it, so
+              this is not duplicated as a nav item -- and it drops away on the
+              one screen where it would point at the page you are already on. */}
+          {route !== 'ask' && (
+            <button className="btn btn-primary btn-sm" onClick={() => navigate('ask')}>
+              Ask
+            </button>
+          )}
+        </div>
       </div>
     </header>
   )

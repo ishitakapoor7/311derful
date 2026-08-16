@@ -62,7 +62,7 @@ export function ReportView({ response }: { response: AskResponse }) {
   }
 
   return (
-    <div>
+    <div className="card card-outer report-card">
       {/* ---- identity ---- */}
       <p className="label">
         {intake.complaint_type}
@@ -179,9 +179,10 @@ export function ReportView({ response }: { response: AskResponse }) {
           'median days to close, per outcome',
           'sample size and confidence tier',
         ]}
-        // Offline, the advice prose ships with the fixtures; the live API writes
-        // it per request in the caller's language. Every number is real either way.
-        estimated={['the wording of the narrative, tips and draft']}
+        // The model phrases; it never produces a figure. Offline the prose ships
+        // with the fixtures, live it is written per request in the caller's
+        // language. Every number is a cube lookup either way.
+        written={['the narrative, the tips and the draft complaint']}
       />
     </div>
   )

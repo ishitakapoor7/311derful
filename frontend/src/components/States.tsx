@@ -92,7 +92,7 @@ export function ClarifyingQuestion({
   const [answer, setAnswer] = useState('')
 
   return (
-    <div className="clarify">
+    <div className="clarify card card-outer">
       <p className="label">One more thing</p>
       <h3>{question}</h3>
       <form

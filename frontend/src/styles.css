@@ -1,38 +1,52 @@
 /* ==========================================================================
    311derful — design tokens
-   Evidence, not chat. Hairline grid, heavy sans, monospace labels, no shadows,
-   no gradients. One accent (the purple from the logo) plus a resolved/failure
-   pair for data. Dark mode via prefers-color-scheme.
+   "The card catalog, applied to a case file." Hairline-ruled cards, one accent
+   (violet, the mark's own colour) plus a fixed/unresolved pair reserved
+   exclusively for outcome truth-telling, so it never reads as decoration.
+   Archivo for anything 311derful says in its own voice; mono for anything the
+   city said or the dataset counted. No shadows, no gradients, light mode only.
    ========================================================================== */
 
 :root {
-  --paper: #ffffff;
-  --paper-2: #fafaf9;
-  --paper-3: #f3f2f0;
-  --ink: #16151a;
-  --ink-2: #4d4b56;
-  --ink-3: #7d7b87;
-  --rule: #e2e1de;
-  --rule-2: #16151a;
+  --paper: oklch(97.2% 0 250);
+  --paper-2: oklch(96% 0.004 260);
+  --paper-3: oklch(93% 0.006 260);
+  --card: #ffffff;
 
-  --accent: #6455c0;
-  --accent-soft: #efedfa;
+  --ink: oklch(26% 0.012 262);
+  --ink-2: color-mix(in oklch, var(--ink) 68%, var(--paper));
+  --ink-3: color-mix(in oklch, var(--ink) 42%, var(--paper));
+  --rule: color-mix(in oklch, var(--ink) 13%, var(--paper));
+  --rule-2: var(--ink);
 
-  --resolved: #16714e;
-  --resolved-soft: #e4f0ea;
-  --failure: #b0442a;
-  --failure-soft: #f8eae5;
-  --neutral: #8a8892;
-  --neutral-soft: #eeedeb;
+  /* the stamp — the product's own voice */
+  --accent: oklch(50% 0.15 288);
+  --accent-soft: color-mix(in oklch, var(--accent) 11%, white);
 
-  --warn: #8a5a00;
-  --warn-soft: #fdf3e0;
+  /* fixed — something changed */
+  --resolved: oklch(52% 0.11 160);
+  --resolved-soft: color-mix(in oklch, var(--resolved) 13%, white);
 
-  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
-  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  /* unresolved — closed, nothing fixed */
+  --failure: oklch(58% 0.11 75);
+  --failure-soft: color-mix(in oklch, var(--failure) 16%, white);
+  --failure-ink: color-mix(in oklch, var(--failure) 62%, black);
+
+  --neutral: oklch(58% 0.01 260);
+  --neutral-soft: color-mix(in oklch, var(--neutral) 12%, white);
+
+  --warn: oklch(48% 0.12 70);
+  --warn-soft: color-mix(in oklch, var(--warn) 14%, white);
+
+  --sans: 'Archivo', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 
   --wrap: 1080px;
   --gap: 24px;
+
+  --radius-sm: 5px;
+  --radius-md: 10px;
+  --radius-pill: 999px;
 }
 
 /* Light mode is forced, deliberately.
@@ -55,7 +69,7 @@ body {
   color: var(--ink);
   font-family: var(--sans);
   font-size: 16px;
-  line-height: 1.55;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -63,9 +77,9 @@ h1,
 h2,
 h3 {
   margin: 0;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
 }
 
 p {
@@ -126,6 +140,105 @@ button {
   color: var(--ink-3);
 }
 
+/* ---------- card (the spine of the whole system) ----------
+   "White, hairline-ruled, one radius, punched at the foot." Reserved for the
+   record-like containers — the intake form, a result, a clarifying question —
+   not every small box on the page. */
+
+.card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+}
+
+.card-outer {
+  margin-bottom: 6px;
+}
+
+.card-outer::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  transform: translateX(-50%);
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+}
+
+.report-card {
+  padding: 28px 28px 32px;
+}
+
+.call-number {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  padding: 4px 11px;
+}
+
+/* rotated outline block — status, "a fact the city recorded" */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warn);
+  border: 1.5px solid var(--warn);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  transform: rotate(-2deg);
+}
+
+/* ---------- pills — reserved exclusively for outcome truth-telling ---------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.pill-resolved {
+  background: var(--resolved-soft);
+  border-color: color-mix(in oklch, var(--resolved) 45%, white);
+  color: var(--resolved);
+}
+
+.pill-failure {
+  background: var(--failure-soft);
+  border-color: color-mix(in oklch, var(--failure) 45%, white);
+  color: var(--failure-ink);
+}
+
+.pill-neutral {
+  background: var(--neutral-soft);
+  border-color: var(--rule);
+  color: var(--ink-2);
+}
+
 /* ---------- header ---------- */
 
 .header {
@@ -146,6 +259,12 @@ button {
   gap: 16px;
 }
 
+.header-end {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .nav {
   display: flex;
   gap: 4px;
@@ -158,6 +277,7 @@ button {
   text-transform: uppercase;
   background: none;
   border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   color: var(--ink-3);
   padding: 7px 11px;
 }
@@ -170,35 +290,7 @@ button {
   color: var(--ink);
   border-color: var(--rule);
   background: var(--paper-2);
-}
-
-/* ---------- placeholder marker ---------- */
-
-.ph-banner {
-  background: var(--warn-soft);
-  border-bottom: 1px solid var(--rule);
-  color: var(--warn);
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  padding: 7px 20px;
-  text-align: center;
-}
-
-.ph {
-  display: inline-block;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.02em;
-  color: var(--warn);
-  background: var(--warn-soft);
-  border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
-  padding: 2px 6px;
-  margin: 6px 0;
-  white-space: nowrap;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 /* ---------- buttons ---------- */
@@ -208,12 +300,12 @@ button {
   align-items: center;
   gap: 8px;
   border: 1px solid var(--rule-2);
-  background: var(--paper);
+  background: var(--card);
   color: var(--ink);
-  padding: 11px 18px;
+  padding: 11px 20px;
   font-size: 14px;
   font-weight: 600;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .btn:hover {
@@ -231,7 +323,7 @@ button {
 }
 
 .btn-sm {
-  padding: 6px 10px;
+  padding: 6px 12px;
   font-size: 12px;
 }
 
@@ -256,13 +348,14 @@ button {
 .hero-stat {
   border: 1px solid var(--rule);
   border-left: 3px solid var(--failure);
+  border-radius: var(--radius-md);
   padding: 20px 22px;
   background: var(--paper-2);
 }
 
 .hero-stat .n {
   font-size: clamp(38px, 8vw, 62px);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -308,6 +401,212 @@ button {
   padding-top: 12px;
 }
 
+/* Black CTA banner — "the tool feels like a different product than the landing
+   page." Reserved for the moment the page asks for the one action it wants. */
+.cta-banner {
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--radius-md);
+  padding: 26px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.cta-banner .btn {
+  background: var(--paper);
+  border-color: var(--paper);
+  color: var(--ink);
+}
+
+.cta-banner .btn:hover {
+  background: color-mix(in srgb, var(--paper) 88%, black);
+}
+
+.cta-banner .btn-ghost {
+  background: none;
+  border-color: color-mix(in srgb, var(--paper) 35%, transparent);
+  color: var(--paper);
+}
+
+.cta-banner .trust {
+  border-top: 0;
+  padding-top: 0;
+  color: color-mix(in srgb, var(--paper) 65%, transparent);
+}
+
+/* ---------- landing hero ----------
+   Headline spanning the full measure, the copy column beneath it on the left,
+   and the measured case file offset to the right. The rail and the skyline are
+   the only decorative elements, and the skyline is drawn from real shares. */
+
+.lp-hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--rule);
+}
+
+.lp-skyline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: min(58%, 340px);
+  fill: var(--paper-3);
+  pointer-events: none;
+}
+
+.lp-hero-in {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  column-gap: 44px;
+  row-gap: 30px;
+  align-items: start;
+  padding-top: 56px;
+  padding-bottom: 72px;
+}
+
+.lp-rail {
+  position: absolute;
+  left: -4px;
+  top: 4px;
+  margin: 0;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.lp-headline {
+  grid-column: 1 / -1;
+  font-size: clamp(34px, 6.2vw, 60px);
+  max-width: 17ch;
+}
+
+/* The one accented phrase in the headline — the claim the page is making. */
+.lp-headline em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.lp-copy {
+  grid-column: 1;
+}
+
+.lp-copy .lede {
+  margin-bottom: 22px;
+}
+
+.lp-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+/* ---------- landing case file ---------- */
+
+.lp-case {
+  grid-column: 2;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  padding: 18px 20px 20px;
+}
+
+.lp-case-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lp-case-n {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-case-meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  border-top: 1px solid var(--rule);
+  margin: 14px 0 16px;
+  padding-top: 12px;
+}
+
+.lp-case-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--rule);
+  margin-top: 16px;
+  padding-top: 14px;
+}
+
+.lp-case-read {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+
+/* Rubber-stamped, because "closed" is the status the city actually recorded. */
+.lp-stamp {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  transform: rotate(-4deg);
+  flex-shrink: 0;
+}
+
+.lp-below {
+  padding-top: 44px;
+  padding-bottom: 64px;
+}
+
+@media (min-width: 981px) {
+  .lp-hero-in {
+    padding-left: 52px;
+  }
+}
+
+@media (max-width: 980px) {
+  .lp-hero-in {
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 40px;
+    padding-bottom: 48px;
+  }
+
+  .lp-headline,
+  .lp-copy,
+  .lp-case {
+    grid-column: 1;
+  }
+
+  .lp-rail {
+    display: none;
+  }
+}
+
 /* ---------- ask layout ---------- */
 
 .ask {
@@ -329,7 +628,9 @@ button {
 
 .field {
   border: 1px solid var(--rule-2);
-  background: var(--paper);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  overflow: hidden;
 }
 
 .field textarea {
@@ -361,9 +662,9 @@ button {
   font-size: 13px;
   padding: 7px 9px;
   border: 1px solid var(--rule);
-  background: var(--paper);
+  background: var(--card);
   color: var(--ink);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .field-bar .spacer {
@@ -374,12 +675,12 @@ button {
   width: 38px;
   height: 38px;
   border: 1px solid var(--rule-2);
-  background: var(--paper);
+  border-radius: var(--radius-sm);
+  background: var(--card);
   color: var(--ink);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 2px;
 }
 
 .mic[data-listening='true'] {
@@ -414,7 +715,7 @@ button {
 
 .headline .n {
   font-size: clamp(46px, 10vw, 86px);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.04em;
   line-height: 0.95;
   font-variant-numeric: tabular-nums;
@@ -435,6 +736,7 @@ button {
   font-size: 11.5px;
   color: var(--ink-2);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
   background: var(--paper-2);
   padding: 7px 10px;
   display: inline-block;
@@ -450,13 +752,14 @@ button {
   font-weight: 700;
 }
 .chip .tier-LOW {
-  color: var(--failure);
+  color: var(--failure-ink);
   font-weight: 700;
 }
 
 /* LOW confidence is a different statement, not a dimmer one. */
 .low-block {
-  border: 2px solid var(--failure);
+  border: 1.5px solid var(--failure);
+  border-radius: var(--radius-md);
   background: var(--failure-soft);
   padding: 20px 22px;
 }
@@ -468,6 +771,7 @@ button {
 
 .caveat {
   border-left: 3px solid var(--failure);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   background: var(--failure-soft);
   padding: 12px 14px;
   font-size: 14px;
@@ -475,6 +779,7 @@ button {
 
 .note {
   border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
   background: var(--paper-2);
   padding: 11px 13px;
   font-size: 13.5px;
@@ -492,7 +797,7 @@ button {
   padding: 13px 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 4px 16px;
+  gap: 6px 16px;
   align-items: baseline;
 }
 
@@ -501,15 +806,45 @@ button {
   box-shadow: -12px 0 0 var(--accent-soft), 12px 0 0 var(--accent-soft);
 }
 
+/* The pill from "what closed actually means" — the ending, named plainly. */
 .bar-name {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 11px;
   font-weight: 700;
-  font-size: 15px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+
+.bar-name[data-group='resolved'] {
+  background: var(--resolved-soft);
+  border-color: color-mix(in oklch, var(--resolved) 45%, white);
+  color: var(--resolved);
+}
+
+.bar-name[data-group='failure'] {
+  background: var(--failure-soft);
+  border-color: color-mix(in oklch, var(--failure) 45%, white);
+  color: var(--failure-ink);
+}
+
+.bar-name[data-group='neutral'] {
+  background: var(--neutral-soft);
+  border-color: var(--rule);
+  color: var(--ink-2);
 }
 
 .bar-blurb {
   font-size: 13px;
   color: var(--ink-3);
   grid-column: 1;
+  margin-top: 2px;
 }
 
 .bar-figs {
@@ -525,11 +860,13 @@ button {
   font-size: 16px;
   font-weight: 700;
   color: var(--ink);
+  font-family: var(--sans);
 }
 
 .bar-track {
   grid-column: 1 / -1;
   height: 10px;
+  border-radius: var(--radius-pill);
   background: var(--paper-3);
   margin-top: 7px;
   position: relative;
@@ -586,6 +923,7 @@ button {
 .swatch {
   width: 12px;
   height: 12px;
+  border-radius: 3px;
   display: inline-block;
 }
 
@@ -594,6 +932,7 @@ button {
 .callout {
   border: 1px solid var(--rule);
   border-left: 3px solid var(--failure);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
   padding: 18px 20px;
   background: var(--paper-2);
 }
@@ -639,6 +978,7 @@ button {
 .draft-notice {
   background: var(--ink);
   color: var(--paper);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   padding: 11px 14px;
   font-size: 13px;
   font-weight: 700;
@@ -650,6 +990,7 @@ button {
 .draft-body {
   border: 1px solid var(--rule);
   border-top: 0;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   background: var(--paper-2);
   padding: 16px;
   font-family: var(--mono);
@@ -731,7 +1072,7 @@ button {
 }
 
 .hist-del:hover {
-  color: var(--failure);
+  color: var(--failure-ink);
 }
 
 /* ---------- chat view ---------- */
@@ -753,6 +1094,8 @@ button {
 .toggle {
   display: inline-flex;
   border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 .toggle button {
@@ -839,6 +1182,7 @@ button {
    report; inside a <details> there is nothing above it, so it needs one back. */
 .turn-draft .draft-body {
   border-top: 1px solid var(--rule);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
 /* ---------- explore table ---------- */
@@ -846,6 +1190,7 @@ button {
 .table-scroll {
   overflow-x: auto;
   border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
 }
 
 table {
@@ -857,7 +1202,7 @@ table {
 th,
 td {
   text-align: left;
-  padding: 11px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--rule);
   white-space: nowrap;
 }
@@ -892,10 +1237,12 @@ td.num {
 .minibar {
   width: 84px;
   height: 8px;
+  border-radius: var(--radius-pill);
   background: var(--paper-3);
   display: inline-block;
   vertical-align: middle;
   margin-right: 9px;
+  overflow: hidden;
 }
 
 .minibar i {
@@ -908,6 +1255,7 @@ td.num {
 
 .loading {
   border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
   padding: 22px;
   background: var(--paper-2);
 }
@@ -920,6 +1268,7 @@ td.num {
 
 .progress {
   height: 3px;
+  border-radius: var(--radius-pill);
   background: var(--paper-3);
   margin-top: 14px;
   overflow: hidden;
@@ -951,13 +1300,15 @@ td.num {
 }
 
 .error {
-  border: 1px solid var(--failure);
+  border: 1.5px solid var(--failure);
+  border-radius: var(--radius-md);
   background: var(--failure-soft);
   padding: 16px 18px;
 }
 
 .clarify {
   border: 1px solid var(--rule-2);
+  border-radius: var(--radius-md);
   padding: 20px 22px;
 }
 
@@ -985,18 +1336,6 @@ td.num {
 
 /* ---------- provenance (quiet, at the foot) ---------- */
 
-.est {
-  font-style: italic;
-  font-family: var(--sans);
-  font-size: 0.78em;
-  font-weight: 500;
-  color: var(--ink-3);
-  letter-spacing: 0;
-  text-transform: none;
-  margin-left: 5px;
-  border-bottom: 1px dotted var(--ink-3);
-  cursor: help;
-}
 
 .provenance {
   border-top: 1px solid var(--rule);
@@ -1059,6 +1398,8 @@ td.num {
   display: flex;
   height: 88px;
   border: 1px solid var(--ink);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .gap-fixed,
@@ -1075,14 +1416,14 @@ td.num {
 }
 
 .gap-failed {
-  background: #6d2818;
+  background: color-mix(in oklch, var(--failure) 62%, black);
 }
 
 .gap-fixed-n,
 .gap-failed-n {
   color: #fff;
   font-size: clamp(20px, 4.4vw, 38px);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
@@ -1106,6 +1447,7 @@ td.num {
 .gap-swatch {
   width: 12px;
   height: 12px;
+  border-radius: 3px;
   display: inline-block;
 }
 
@@ -1113,7 +1455,7 @@ td.num {
   background: var(--resolved);
 }
 .gap-swatch-failed {
-  background: #6d2818;
+  background: color-mix(in oklch, var(--failure) 62%, black);
 }
 
 .gap-caption {
@@ -1127,7 +1469,7 @@ td.num {
 
 .scan-n {
   font-size: clamp(30px, 6vw, 46px);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -1188,16 +1530,21 @@ td.num {
 
 .loop-hint {
   color: var(--ink-3);
+  border-left: 3px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 10px 12px;
 }
 
 .loop-confirm {
   border: 1px solid var(--resolved);
+  border-radius: var(--radius-md);
   background: var(--resolved-soft);
   padding: 14px 16px;
 }
 
 .loop-confirm-head {
-  font-weight: 800;
+  font-weight: 700;
   font-size: 17px;
   letter-spacing: -0.015em;
   margin-bottom: 5px;
@@ -1212,13 +1559,14 @@ td.num {
 
 .share-card {
   border: 1px solid var(--ink);
+  border-radius: var(--radius-md);
   padding: 22px 24px;
   background: var(--paper-2);
 }
 
 .share-quote {
   font-size: clamp(18px, 3vw, 25px);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   max-width: 28ch;
 }
@@ -1255,9 +1603,9 @@ td.num {
   font-size: 13px;
   padding: 8px 10px;
   border: 1px solid var(--rule);
-  background: var(--paper);
+  background: var(--card);
   color: var(--ink);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   max-width: 100%;
 }
 
@@ -1267,6 +1615,7 @@ td.num {
 
 .map-wrap {
   border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
   background: var(--paper-2);
   padding: 12px;
   position: relative;
@@ -1280,6 +1629,7 @@ td.num {
 
 .map-skeleton {
   border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
   background: var(--paper-2);
   height: 420px;
 }
@@ -1301,7 +1651,7 @@ td.num {
 }
 
 .map-readout-board {
-  font-weight: 800;
+  font-weight: 700;
   font-size: 15px;
   letter-spacing: -0.01em;
 }
@@ -1360,6 +1710,10 @@ td.num {
 
   .bar-row.is-targeted {
     box-shadow: none;
+  }
+
+  .cta-banner {
+    padding: 22px;
   }
 }
 
