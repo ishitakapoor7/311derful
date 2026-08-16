@@ -14,8 +14,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Anchored to the repo root. Unanchored, these match frontend/src/lib/ -- which
+# is application source, not a Python distribution artifact.
+/lib/
+/lib64/
 parts/
 sdist/
 var/
