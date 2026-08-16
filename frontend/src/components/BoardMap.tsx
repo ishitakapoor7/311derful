@@ -1,14 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BoardShare } from '../types/api'
 import { pctShort, count } from '../lib/format'
-
-interface GeoFeature {
-  /** `park: 1` marks a joint interest area — parkland, airports, cemeteries. */
-  properties: { board: string; boro: string; cd: number; park?: number }
-  geometry:
-    | { type: 'Polygon'; coordinates: number[][][] }
-    | { type: 'MultiPolygon'; coordinates: number[][][][] }
-}
+import { loadDistricts, projectFeatures, type GeoFeature } from '../lib/geo'
 
 interface Props {
   shares: BoardShare[]
@@ -36,10 +29,9 @@ export function BoardMap({ shares, selected, onSelect }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    fetch('community-districts.geojson')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((g: { features: GeoFeature[] }) => {
-        if (!cancelled) setFeatures(g.features)
+    loadDistricts()
+      .then((f) => {
+        if (!cancelled) setFeatures(f)
       })
       .catch(() => {
         if (!cancelled) setFailed(true)
@@ -55,57 +47,7 @@ export function BoardMap({ shares, selected, onSelect }: Props) {
     return m
   }, [shares])
 
-  const paths = useMemo(() => {
-    if (!features) return []
-
-    let minX = 180
-    let minY = 90
-    let maxX = -180
-    let maxY = -90
-    for (const f of features) {
-      const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates
-      for (const rings of polys)
-        for (const ring of rings)
-          for (const [x, y] of ring) {
-            if (x < minX) minX = x
-            if (x > maxX) maxX = x
-            if (y < minY) minY = y
-            if (y > maxY) maxY = y
-          }
-    }
-
-    // Equirectangular with a cosine correction at the centre latitude -- across
-    // five miles of city that is indistinguishable from a proper projection.
-    const midLat = ((minY + maxY) / 2) * (Math.PI / 180)
-    const lonScale = Math.cos(midLat)
-    const spanX = (maxX - minX) * lonScale
-    const spanY = maxY - minY
-    const scale = Math.min(W / spanX, H / spanY) * 0.96
-    const offX = (W - spanX * scale) / 2
-    const offY = (H - spanY * scale) / 2
-
-    const project = ([lon, lat]: number[]) => [
-      offX + (lon - minX) * lonScale * scale,
-      offY + (maxY - lat) * scale,
-    ]
-
-    return features.map((f) => {
-      const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates
-      let d = ''
-      for (const rings of polys) {
-        for (const ring of rings) {
-          d += ring
-            .map((pt, i) => {
-              const [x, y] = project(pt)
-              return `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`
-            })
-            .join('')
-          d += 'Z'
-        }
-      }
-      return { board: f.properties.board, d, park: Boolean(f.properties.park) }
-    })
-  }, [features])
+  const paths = useMemo(() => (features ? projectFeatures(features, W, H) : []), [features])
 
   if (failed) {
     return (
