@@ -248,12 +248,22 @@ async function initVapi() {
       }
     });
     vapi.on("error", (e) => { $("status").textContent = `Vapi: ${e?.message ?? e}`; setListening(false); });
-    vapi.on("call-end", () => setListening(false));
+
+    // Billing guard: if someone opens the mic and never speaks, the call would
+    // sit open and bill by the minute. Hang up after 30s of silence.
+    let idleTimer = null;
+    const resetIdle = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => { if (listening) vapi.stop(); }, 30_000);
+    };
+    vapi.on("speech-start", resetIdle);
+    vapi.on("call-end", () => { clearTimeout(idleTimer); setListening(false); });
 
     $("mic").onclick = () => {
       if (listening) return vapi.stop();
       vapi.start(CONFIG.vapi_assistant_id);
       setListening(true);
+      resetIdle();
     };
   } catch (err) {
     // Never let a voice failure take the page with it.
@@ -271,7 +281,11 @@ function setListening(on) {
 
 /** Speak a reply through whichever path is live. */
 function speak(text, lang) {
-  if (CONFIG.voice_mode === "vapi" && vapi) return void vapi.say(text);
+  // `true` = end the call once the sentence finishes. Vapi bills per minute of
+  // open call, and one question is one short exchange -- without this the
+  // meter runs until someone remembers to press stop, which on demo day is
+  // "never". Each ask becomes a ~30s call instead of an open mic.
+  if (CONFIG.voice_mode === "vapi" && vapi) return void vapi.say(text, true);
   if (!window.speechSynthesis) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
